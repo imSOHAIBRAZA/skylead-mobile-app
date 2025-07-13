@@ -856,6 +856,725 @@
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//****LAST VERSION */
+
+// import React, { useState, useEffect } from 'react';
+// import {
+//   View,
+//   Text,
+//   StyleSheet,
+//   ScrollView,
+//   TouchableOpacity,
+//   TextInput,
+//   Animated,
+//   Dimensions,
+//   StatusBar,
+//   Alert,
+//   Linking,
+// } from 'react-native';
+// import { BlurView } from 'expo-blur';
+// import { ThemedView } from '@/components/ThemedView';
+// import Header from '@/components/header';
+
+// import {Ionicons} from '@expo/vector-icons';
+
+// const { width } = Dimensions.get('window');
+
+// interface CallHistoryItem {
+//   id: string;
+//   name: string;
+//   phone: string;
+//   initials: string;
+//   status: 'accepted' | 'rejected' | 'missed';
+//   time: string;
+//   type: string;
+//   duration: string;
+// }
+
+// const CallHistory: React.FC = () => {
+//   const [callHistory, setCallHistory] = useState<CallHistoryItem[]>([
+//     {
+//       id: '1',
+//       name: 'Alice Miller',
+//       phone: '+1 (555) 123-4567',
+//       initials: 'AM',
+//       status: 'accepted',
+//       time: 'Today, 2:30 PM',
+//       type: 'Sales Inquiry',
+//       duration: '15 min',
+//     },
+//     {
+//       id: '2',
+//       name: 'Robert Johnson',
+//       phone: '+1 (555) 987-6543',
+//       initials: 'RJ',
+//       status: 'rejected',
+//       time: 'Today, 1:45 PM',
+//       type: 'Support',
+//       duration: '-',
+//     },
+//     {
+//       id: '3',
+//       name: 'Sarah Davis',
+//       phone: '+1 (555) 456-7890',
+//       initials: 'SD',
+//       status: 'accepted',
+//       time: 'Today, 11:20 AM',
+//       type: 'Follow-up',
+//       duration: '8 min',
+//     },
+//     {
+//       id: '4',
+//       name: 'Michael Brown',
+//       phone: '+1 (555) 111-2222',
+//       initials: 'MB',
+//       status: 'missed',
+//       time: 'Yesterday, 4:15 PM',
+//       type: 'Consultation',
+//       duration: '-',
+//     },
+//     {
+//       id: '5',
+//       name: 'Emma Wilson',
+//       phone: '+1 (555) 333-4444',
+//       initials: 'EW',
+//       status: 'accepted',
+//       time: 'Yesterday, 2:00 PM',
+//       type: 'Sales Inquiry',
+//       duration: '22 min',
+//     },
+//     {
+//       id: '6',
+//       name: 'David Lee',
+//       phone: '+1 (555) 555-6666',
+//       initials: 'DL',
+//       status: 'rejected',
+//       time: 'Yesterday, 10:30 AM',
+//       type: 'Support',
+//       duration: '-',
+//     },
+//   ]);
+
+//   const [filteredHistory, setFilteredHistory] = useState<CallHistoryItem[]>(callHistory);
+//   const [activeFilter, setActiveFilter] = useState<'all' | 'accepted' | 'rejected' | 'missed'>('all');
+//   const [searchQuery, setSearchQuery] = useState('');
+//   const [stats, setStats] = useState({
+//     total: 24,
+//     accepted: 18,
+//     avgDuration: '12m',
+//   });
+
+//   useEffect(() => {
+//     filterCalls();
+//   }, [activeFilter, searchQuery, callHistory]);
+
+//   const filterCalls = () => {
+//     let filtered = callHistory;
+
+//     // Apply status filter
+//     if (activeFilter !== 'all') {
+//       filtered = filtered.filter(call => call.status === activeFilter);
+//     }
+
+//     // Apply search filter
+//     if (searchQuery) {
+//       filtered = filtered.filter(call =>
+//         call.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+//         call.phone.includes(searchQuery)
+//       );
+//     }
+
+//     setFilteredHistory(filtered);
+//   };
+
+//   // Function to handle phone dialing
+//   const handlePhoneCall = async (phoneNumber: string) => {
+//     try {
+//       // Clean the phone number (remove spaces, parentheses, and dashes)
+//       const cleanPhoneNumber = phoneNumber.replace(/[\s\(\)\-]/g, '');
+//       const phoneUrl = `tel:${cleanPhoneNumber}`;
+      
+//       // Check if the device can handle the tel: URL
+//       const supported = await Linking.canOpenURL(phoneUrl);
+      
+//       if (supported) {
+//         await Linking.openURL(phoneUrl);
+//       } else {
+//         Alert.alert(
+//           'Phone Not Available',
+//           'Phone dialing is not available on this device',
+//           [{ text: 'OK' }]
+//         );
+//       }
+//     } catch (error) {
+//       console.error('Error opening phone dialer:', error);
+//       Alert.alert(
+//         'Error',
+//         'Failed to open phone dialer. Please try again.',
+//         [{ text: 'OK' }]
+//       );
+//     }
+//   };
+
+//   const handleCallBack = async (phoneNumber: string) => {
+//     Alert.alert(
+//       'Call Back',
+//       `Would you like to call ${phoneNumber}?`,
+//       [
+//         { text: 'Cancel', style: 'cancel' },
+//         { 
+//           text: 'Call', 
+//           onPress: () => handlePhoneCall(phoneNumber)
+//         },
+//       ]
+//     );
+//   };
+
+//   const handleShowDetails = (callerName: string) => {
+//     Alert.alert(
+//       'Call Details',
+//       `Details for ${callerName}\n\n• Call notes and recordings\n• Previous interactions\n• Contact information\n• Follow-up actions`,
+//       [{ text: 'OK' }]
+//     );
+//   };
+
+//   const getStatusStyle = (status: string) => {
+//     switch (status) {
+//       case 'accepted':
+//         return { backgroundColor: '#dcfce7', color: '#166534' };
+//       case 'rejected':
+//         return { backgroundColor: '#fee2e2', color: '#991b1b' };
+//       case 'missed':
+//         return { backgroundColor: '#fef3c7', color: '#92400e' };
+//       default:
+//         return { backgroundColor: '#f3f4f6', color: '#6b7280' };
+//     }
+//   };
+
+//   const FilterTab: React.FC<{
+//     title: string;
+//     filter: 'all' | 'accepted' | 'rejected' | 'missed';
+//     isActive: boolean;
+//     onPress: () => void;
+//   }> = ({ title, filter, isActive, onPress }) => (
+//     <TouchableOpacity
+//       style={[styles.filterTab, isActive && styles.filterTabActive]}
+//       onPress={onPress}
+//     >
+//       <Text style={[styles.filterTabText, isActive && styles.filterTabTextActive]}>
+//         {title}
+//       </Text>
+//     </TouchableOpacity>
+//   );
+
+//   const CallHistoryCard: React.FC<{ item: CallHistoryItem; index: number }> = ({ item, index }) => {
+//     const slideAnim = new Animated.Value(0);
+
+//     useEffect(() => {
+//       Animated.timing(slideAnim, {
+//         toValue: 1,
+//         duration: 300,
+//         delay: index * 100,
+//         useNativeDriver: true,
+//       }).start();
+//     }, []);
+
+//     const statusStyle = getStatusStyle(item.status);
+
+//     return (
+//       <Animated.View
+//         style={[
+//           styles.historyItem,
+//           {
+//             opacity: slideAnim,
+//             transform: [
+//               {
+//                 translateY: slideAnim.interpolate({
+//                   inputRange: [0, 1],
+//                   outputRange: [20, 0],
+//                 }),
+//               },
+//             ],
+//           },
+//         ]}
+//       >
+//         <View style={styles.historyHeader}>
+//           <View style={styles.callerAvatar}>
+//             <Text style={styles.callerInitials}>{item.initials}</Text>
+//           </View>
+          
+//           <View style={styles.callerInfo}>
+//             <Text style={styles.callerName}>{item.name}</Text>
+//             <Text style={styles.callerPhone}>{item.phone}</Text>
+//           </View>
+          
+//           <View style={styles.callStatus}>
+//             <View style={[styles.statusBadge, statusStyle]}>
+//               <Text style={[styles.statusText, { color: statusStyle.color }]}>
+//                 {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+//               </Text>
+//             </View>
+//             <Text style={styles.callTime}>{item.time}</Text>
+//           </View>
+//         </View>
+
+//         <View style={styles.callDetails}>
+//           <View style={styles.callTypeContainer}>
+//             <Text style={styles.callType}>{item.type}</Text>
+//           </View>
+//           <Text style={styles.callDuration}>{item.duration}</Text>
+//         </View>
+
+//         <View style={styles.callActions}>
+//           <TouchableOpacity
+//             style={[styles.actionBtn, styles.btnCallback]}
+//             // onPress={() => handleCallBack(item.phone)}
+//             onPress={ () => handlePhoneCall(item.phone)}
+//           >
+//             <Text style={styles.btnCallbackText}>📞 Call Back</Text>
+//           </TouchableOpacity>
+          
+//           <TouchableOpacity
+//             style={[styles.actionBtn, styles.btnDetails]}
+//             onPress={() => handleShowDetails(item.name)}
+//           >
+//             <Text style={styles.btnDetailsText}>📋 Details</Text>
+//           </TouchableOpacity>
+//         </View>
+//       </Animated.View>
+//     );
+//   };
+
+//   const EmptyState: React.FC = () => (
+//     <View style={styles.emptyState}>
+//       <Text style={styles.emptyIcon}>📞</Text>
+//       <Text style={styles.emptyTitle}>
+//         No {activeFilter === 'all' ? '' : activeFilter} calls found
+//       </Text>
+//       <Text style={styles.emptySubtitle}>
+//         Your call history will appear here once you start receiving calls.
+//       </Text>
+//     </View>
+//   );
+
+//   return (
+//     <ThemedView style={styles.container}>
+//      <Header/>
+
+//       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+//         <View style={styles.mainContent}>
+//           <Text style={styles.pageTitle}>Call History</Text>
+//           <Text style={styles.pageSubtitle}>Review your call activity</Text>
+
+//           {/* Search */}
+//           <View style={styles.searchContainer}>
+//             <Text style={styles.searchIcon}>
+//             <Ionicons name="search" color={"rgba(255, 255, 255, 0.5)"} size={20}/></Text>
+//             <TextInput
+//               style={styles.searchInput}
+//               placeholder="Search calls..."
+//               placeholderTextColor="rgba(255, 255, 255, 0.5)"
+//               value={searchQuery}
+//               onChangeText={setSearchQuery}
+//             />
+//           </View>
+
+//           {/* Filter Tabs */}
+//           <View  style={styles.filterTabs}>
+//             <FilterTab
+//               title="All"
+//               filter="all"
+//               isActive={activeFilter === 'all'}
+//               onPress={() => setActiveFilter('all')}
+//             />
+//             <FilterTab
+//               title="Accepted"
+//               filter="accepted"
+//               isActive={activeFilter === 'accepted'}
+//               onPress={() => setActiveFilter('accepted')}
+//             />
+//             <FilterTab
+//               title="Rejected"
+//               filter="rejected"
+//               isActive={activeFilter === 'rejected'}
+//               onPress={() => setActiveFilter('rejected')}
+//             />
+//             <FilterTab
+//               title="Missed"
+//               filter="missed"
+//               isActive={activeFilter === 'missed'}
+//               onPress={() => setActiveFilter('missed')}
+//             />
+//           </View>
+
+//           {/* Stats Summary */}
+//           <View style={styles.statsGrid}>
+//             <View  style={styles.statCard}>
+//               <Text style={styles.statNumber}>{stats.total}</Text>
+//               <Text style={styles.statLabel}>Total Calls</Text>
+//             </View>
+            
+//             <View  style={styles.statCard}>
+//               <Text style={styles.statNumber}>{stats.accepted}</Text>
+//               <Text style={styles.statLabel}>Accepted</Text>
+//             </View>
+            
+//             <View  style={styles.statCard}>
+//               <Text style={styles.statNumber}>{stats.avgDuration}</Text>
+//               <Text style={styles.statLabel}>Avg Duration</Text>
+//             </View>
+//           </View>
+
+//           {/* Call History */}
+//           {filteredHistory.length === 0 ? (
+//             <EmptyState />
+//           ) : (
+//             filteredHistory.map((item, index) => (
+//               <CallHistoryCard key={item.id} item={item} index={index} />
+//             ))
+//           )}
+//         </View>
+//       </ScrollView>
+
+     
+//     </ThemedView>
+//   );
+// };
+
+// export default  CallHistory;
+
+// const styles = StyleSheet.create({
+//   container: {
+//     flex: 1,
+//     paddingTop: 50,
+//   },
+//   header: {
+//     flexDirection: 'row',
+//     justifyContent: 'space-between',
+//     alignItems: 'center',
+//     paddingHorizontal: 20,
+//     paddingBottom: 30,
+//   },
+//   logo: {
+//     flexDirection: 'row',
+//     alignItems: 'center',
+//     gap: 8,
+//   },
+//   logoIcon: {
+//     width: 24,
+//     height: 24,
+//     backgroundColor: '#4ade80',
+//     borderRadius: 4,
+//     justifyContent: 'center',
+//     alignItems: 'center',
+//   },
+//   logoIconText: {
+//     color: 'white',
+//     fontWeight: 'bold',
+//     fontSize: 14,
+//   },
+//   logoText: {
+//     color: 'white',
+//     fontSize: 18,
+//     fontWeight: '600',
+//   },
+//   userInfo: {
+//     flexDirection: 'row',
+//     alignItems: 'center',
+//     gap: 10,
+//   },
+//   userName: {
+//     color: 'rgba(255, 255, 255, 0.9)',
+//     fontSize: 14,
+//   },
+//   userAvatar: {
+//     width: 36,
+//     height: 36,
+//     backgroundColor: '#4ade80',
+//     borderRadius: 18,
+//     justifyContent: 'center',
+//     alignItems: 'center',
+//   },
+//   userInitials: {
+//     color: 'white',
+//     fontWeight: '600',
+//     fontSize: 14,
+//   },
+//   scrollView: {
+//     flex: 1,
+//   },
+//   mainContent: {
+//     paddingHorizontal: 20,
+//     paddingBottom: 100,
+//   },
+//   pageTitle: {
+//     fontSize: 24,
+//     fontWeight: '600',
+//     color: 'white',
+//     marginBottom: 8,
+//   },
+//   pageSubtitle: {
+//     fontSize: 16,
+//     color: 'rgba(255, 255, 255, 0.7)',
+//     marginBottom: 30,
+//   },
+//   searchContainer: {
+//     position: 'relative',
+//     marginBottom: 20,
+//   },
+//   searchIcon: {
+//     position: 'absolute',
+//     left: 12,
+//     top: 12,
+//     fontSize: 16,
+//     color: 'rgba(255, 255, 255, 0.5)',
+//     zIndex: 1,
+//   },
+//   searchInput: {
+//     backgroundColor: 'rgba(255, 255, 255, 0.1)',
+//     borderRadius: 12,
+//     paddingHorizontal: 40,
+//     paddingVertical: 12,
+//     color: 'white',
+//     fontSize: 14,
+//     borderWidth: 1,
+//     borderColor: 'rgba(255, 255, 255, 0.1)',
+//   },
+//   filterTabs: {
+//     flexDirection: 'row',
+//     backgroundColor: 'rgba(255, 255, 255, 0.1)',
+//     borderRadius: 12,
+//     padding: 4,
+//     marginBottom: 30,
+//     borderWidth: 1,
+//     borderColor: 'rgba(255, 255, 255, 0.1)',
+//   },
+//   filterTab: {
+//     flex: 1,
+//     paddingVertical: 10,
+//     alignItems: 'center',
+//     borderRadius: 8,
+//   },
+//   filterTabActive: {
+//     backgroundColor: '#4ade80',
+//   },
+//   filterTabText: {
+//     fontSize: 14,
+//     fontWeight: '500',
+//     color: 'rgba(255, 255, 255, 0.7)',
+//   },
+//   filterTabTextActive: {
+//     color: 'white',
+//   },
+//   statsGrid: {
+//     flexDirection: 'row',
+//     gap: 12,
+//     marginBottom: 30,
+//   },
+//   statCard: {
+//     flex: 1,
+//     backgroundColor: 'rgba(255, 255, 255, 0.1)',
+//     borderRadius: 12,
+//     padding: 16,
+//     alignItems: 'center',
+//     borderWidth: 1,
+//     borderColor: 'rgba(255, 255, 255, 0.1)',
+//   },
+//   statNumber: {
+//     fontSize: 20,
+//     fontWeight: '700',
+//     color: '#4ade80',
+//     marginBottom: 4,
+//   },
+//   statLabel: {
+//     fontSize: 11,
+//     color: 'rgba(255, 255, 255, 0.7)',
+//   },
+//   historyItem: {
+//     backgroundColor: 'white',
+//     borderRadius: 16,
+//     padding: 20,
+//     marginBottom: 12,
+//     shadowColor: '#000',
+//     shadowOffset: { width: 0, height: 4 },
+//     shadowOpacity: 0.1,
+//     shadowRadius: 20,
+//     elevation: 5,
+//   },
+//   historyHeader: {
+//     flexDirection: 'row',
+//     alignItems: 'center',
+//     gap: 15,
+//     marginBottom: 12,
+//   },
+//   callerAvatar: {
+//     width: 45,
+//     height: 45,
+//     backgroundColor: '#4ade80',
+//     borderRadius: 22.5,
+//     justifyContent: 'center',
+//     alignItems: 'center',
+//   },
+//   callerInitials: {
+//     color: 'white',
+//     fontWeight: '600',
+//     fontSize: 16,
+//   },
+//   callerInfo: {
+//     flex: 1,
+//   },
+//   callerName: {
+//     fontSize: 16,
+//     fontWeight: '600',
+//     color: '#1f2937',
+//     marginBottom: 2,
+//   },
+//   callerPhone: {
+//     fontSize: 13,
+//     color: '#6b7280',
+//   },
+//   callStatus: {
+//     alignItems: 'flex-end',
+//     gap: 4,
+//   },
+//   statusBadge: {
+//     paddingHorizontal: 10,
+//     paddingVertical: 4,
+//     borderRadius: 12,
+//   },
+//   statusText: {
+//     fontSize: 11,
+//     fontWeight: '600',
+//   },
+//   callTime: {
+//     fontSize: 12,
+//     color: '#9ca3af',
+//   },
+//   callDetails: {
+//     flexDirection: 'row',
+//     justifyContent: 'space-between',
+//     alignItems: 'center',
+//     marginTop: 12,
+//     paddingTop: 12,
+//     borderTopWidth: 1,
+//     borderTopColor: '#f3f4f6',
+//     marginBottom: 12,
+//   },
+//   callTypeContainer: {
+//     backgroundColor: '#dbeafe',
+//     paddingHorizontal: 10,
+//     paddingVertical: 4,
+//     borderRadius: 12,
+//   },
+//   callType: {
+//     fontSize: 11,
+//     fontWeight: '500',
+//     color: '#1e40af',
+//   },
+//   callDuration: {
+//     fontSize: 12,
+//     color: '#6b7280',
+//     fontWeight: '500',
+//   },
+//   callActions: {
+//     flexDirection: 'row',
+//     gap: 8,
+//   },
+//   actionBtn: {
+//     paddingHorizontal: 12,
+//     paddingVertical: 6,
+//     borderRadius: 8,
+//     flex: 1,
+//     alignItems: 'center',
+//   },
+//   btnCallback: {
+//     backgroundColor: '#4ade80',
+//   },
+//   btnCallbackText: {
+//     color: 'white',
+//     fontSize: 12,
+//     fontWeight: '500',
+//   },
+//   btnDetails: {
+//     backgroundColor: '#f3f4f6',
+//   },
+//   btnDetailsText: {
+//     color: '#6b7280',
+//     fontSize: 12,
+//     fontWeight: '500',
+//   },
+//   emptyState: {
+//     alignItems: 'center',
+//     padding: 40,
+//   },
+//   emptyIcon: {
+//     fontSize: 48,
+//     marginBottom: 16,
+//     opacity: 0.5,
+//   },
+//   emptyTitle: {
+//     fontSize: 18,
+//     fontWeight: '600',
+//     marginBottom: 8,
+//     color: 'rgba(255, 255, 255, 0.8)',
+//   },
+//   emptySubtitle: {
+//     fontSize: 14,
+//     color: 'rgba(255, 255, 255, 0.6)',
+//     textAlign: 'center',
+//     lineHeight: 20,
+//   },
+//   bottomNav: {
+//     backgroundColor: 'rgba(255, 255, 255, 0.1)',
+//     borderTopWidth: 1,
+//     borderTopColor: 'rgba(255, 255, 255, 0.1)',
+//     paddingVertical: 20,
+//     paddingHorizontal: 20,
+//   },
+//   navItems: {
+//     flexDirection: 'row',
+//     justifyContent: 'space-around',
+//   },
+//   navItem: {
+//     alignItems: 'center',
+//     padding: 8,
+//     borderRadius: 12,
+//     minWidth: 60,
+//   },
+//   navItemActive: {
+//     backgroundColor: 'rgba(74, 222, 128, 0.2)',
+//   },
+//   navIcon: {
+//     fontSize: 20,
+//     marginBottom: 4,
+//   },
+//   navLabel: {
+//     fontSize: 12,
+//     fontWeight: '500',
+//     color: 'rgba(255, 255, 255, 0.6)',
+//   },
+//   navLabelActive: {
+//     color: '#4ade80',
+//   },
+// });
+
+
+
+
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -869,6 +1588,7 @@ import {
   StatusBar,
   Alert,
   Linking,
+  FlatList,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { ThemedView } from '@/components/ThemedView';
@@ -1126,7 +1846,6 @@ const CallHistory: React.FC = () => {
         <View style={styles.callActions}>
           <TouchableOpacity
             style={[styles.actionBtn, styles.btnCallback]}
-            // onPress={() => handleCallBack(item.phone)}
             onPress={ () => handlePhoneCall(item.phone)}
           >
             <Text style={styles.btnCallbackText}>📞 Call Back</Text>
@@ -1155,119 +1874,123 @@ const CallHistory: React.FC = () => {
     </View>
   );
 
+  const renderCallHistoryItem = ({ item, index }: { item: CallHistoryItem; index: number }) => (
+    <CallHistoryCard item={item} index={index} />
+  );
+
+  const renderListHeader = () => (
+    <View style={styles.listHeader}>
+      <Text style={styles.pageTitle}>Call History</Text>
+      <Text style={styles.pageSubtitle}>Review your call activity</Text>
+
+      {/* Search */}
+      <View style={styles.searchContainer}>
+        <Text style={styles.searchIcon}>
+          <Ionicons name="search" color={"rgba(255, 255, 255, 0.5)"} size={20}/>
+        </Text>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search calls..."
+          placeholderTextColor="rgba(255, 255, 255, 0.5)"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+      </View>
+
+      {/* Filter Tabs */}
+      <View style={styles.filterTabs}>
+        <FilterTab
+          title="All"
+          filter="all"
+          isActive={activeFilter === 'all'}
+          onPress={() => setActiveFilter('all')}
+        />
+        <FilterTab
+          title="Accepted"
+          filter="accepted"
+          isActive={activeFilter === 'accepted'}
+          onPress={() => setActiveFilter('accepted')}
+        />
+        <FilterTab
+          title="Rejected"
+          filter="rejected"
+          isActive={activeFilter === 'rejected'}
+          onPress={() => setActiveFilter('rejected')}
+        />
+        <FilterTab
+          title="Missed"
+          filter="missed"
+          isActive={activeFilter === 'missed'}
+          onPress={() => setActiveFilter('missed')}
+        />
+      </View>
+
+      {/* Stats Summary */}
+      <View style={styles.statsGrid}>
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>{stats.total}</Text>
+          <Text style={styles.statLabel}>Total Calls</Text>
+        </View>
+        
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>{stats.accepted}</Text>
+          <Text style={styles.statLabel}>Accepted</Text>
+        </View>
+        
+        <View style={styles.statCard}>
+          <Text style={styles.statNumber}>{stats.avgDuration}</Text>
+          <Text style={styles.statLabel}>Avg Duration</Text>
+        </View>
+      </View>
+    </View>
+  );
+
   return (
     <ThemedView style={styles.container}>
-     <Header/>
+      <Header/>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <View style={styles.mainContent}>
-          <Text style={styles.pageTitle}>Call History</Text>
-          <Text style={styles.pageSubtitle}>Review your call activity</Text>
-
-          {/* Search */}
-          <View style={styles.searchContainer}>
-            <Text style={styles.searchIcon}>
-            <Ionicons name="search" color={"rgba(255, 255, 255, 0.5)"} size={20}/></Text>
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search calls..."
-              placeholderTextColor="rgba(255, 255, 255, 0.5)"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-          </View>
-
-          {/* Filter Tabs */}
-          <View  style={styles.filterTabs}>
-            <FilterTab
-              title="All"
-              filter="all"
-              isActive={activeFilter === 'all'}
-              onPress={() => setActiveFilter('all')}
-            />
-            <FilterTab
-              title="Accepted"
-              filter="accepted"
-              isActive={activeFilter === 'accepted'}
-              onPress={() => setActiveFilter('accepted')}
-            />
-            <FilterTab
-              title="Rejected"
-              filter="rejected"
-              isActive={activeFilter === 'rejected'}
-              onPress={() => setActiveFilter('rejected')}
-            />
-            <FilterTab
-              title="Missed"
-              filter="missed"
-              isActive={activeFilter === 'missed'}
-              onPress={() => setActiveFilter('missed')}
-            />
-          </View>
-
-          {/* Stats Summary */}
-          <View style={styles.statsGrid}>
-            <View  style={styles.statCard}>
-              <Text style={styles.statNumber}>{stats.total}</Text>
-              <Text style={styles.statLabel}>Total Calls</Text>
-            </View>
-            
-            <View  style={styles.statCard}>
-              <Text style={styles.statNumber}>{stats.accepted}</Text>
-              <Text style={styles.statLabel}>Accepted</Text>
-            </View>
-            
-            <View  style={styles.statCard}>
-              <Text style={styles.statNumber}>{stats.avgDuration}</Text>
-              <Text style={styles.statLabel}>Avg Duration</Text>
-            </View>
-          </View>
-
-          {/* Call History */}
-          {filteredHistory.length === 0 ? (
-            <EmptyState />
-          ) : (
-            filteredHistory.map((item, index) => (
-              <CallHistoryCard key={item.id} item={item} index={index} />
-            ))
-          )}
-        </View>
-      </ScrollView>
-
-      {/* Bottom Navigation */}
-      {/* <BlurView intensity={20} style={styles.bottomNav}>
-        <View style={styles.navItems}>
-          <TouchableOpacity style={styles.navItem}>
-            <Text style={styles.navIcon}>📞</Text>
-            <Text style={styles.navLabel}>Dashboard</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={[styles.navItem, styles.navItemActive]}>
-            <Text style={styles.navIcon}>📋</Text>
-            <Text style={[styles.navLabel, styles.navLabelActive]}>History</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.navItem}>
-            <Text style={styles.navIcon}>👤</Text>
-            <Text style={styles.navLabel}>Profile</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.navItem}>
-            <Text style={styles.navIcon}>⚙️</Text>
-            <Text style={styles.navLabel}>Settings</Text>
-          </TouchableOpacity>
-        </View>
-      </BlurView> */}
+      <FlatList
+        data={filteredHistory}
+        renderItem={renderCallHistoryItem}
+        keyExtractor={(item) => item.id}
+        ListHeaderComponent={renderListHeader}
+        ListEmptyComponent={EmptyState}
+        contentContainerStyle={[
+          styles.flatListContainer,
+          filteredHistory.length === 0 && styles.flatListEmptyContainer
+        ]}
+        showsVerticalScrollIndicator={false}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={10}
+        removeClippedSubviews={true}
+        getItemLayout={(data, index) => ({
+          length: 200, // Approximate height of each item
+          offset: 200 * index,
+          index,
+        })}
+      />
     </ThemedView>
   );
 };
 
-export default  CallHistory;
+export default CallHistory;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingTop: 50,
+  },
+  flatListContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 100,
+  },
+  flatListEmptyContainer: {
+    flexGrow: 1,
+    justifyContent: 'center',
+  },
+  listHeader: {
+    marginBottom: 20,
   },
   header: {
     flexDirection: 'row',
@@ -1503,11 +2226,12 @@ const styles = StyleSheet.create({
   },
   actionBtn: {
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
+    paddingVertical: 12,
+    borderRadius: 12,
     flex: 1,
     alignItems: 'center',
   },
+
   btnCallback: {
     backgroundColor: '#4ade80',
   },

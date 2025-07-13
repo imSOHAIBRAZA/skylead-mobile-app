@@ -333,21 +333,6 @@ interface User {
   // Note: token is stored separately, not in user object
 }
 
-interface LoginResponse {
-  data: {
-    company_id: number;
-    email: string;
-    id: number;
-    is_superadmin: number;
-    name: string;
-    position: string;
-    role: string;
-    roles: any[];
-    token: string;
-  };
-  message: string;
-  success: boolean;
-}
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -411,21 +396,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       let token = null;
 
       // Check if response has data property (nested structure)
-      if (data.data && data.data.token) {
-        const { token: userToken, ...restUserData } = data.data;
+      if (data?.data && data?.data?.token) {
+        const { token: userToken, ...restUserData } = data?.data;
         userData = restUserData;
         token = userToken;
         console.log('Using nested data structure');
       } 
       // Check if response is direct user object
-      else if (data.token && data.id) {
+      else if (data?.token && data?.id) {
         const { token: userToken, ...restUserData } = data;
         userData = restUserData;
         token = userToken;
         console.log('Using direct data structure');
       }
       // Check if response has success property
-      else if (data.success && data.data) {
+      else if (data?.success && data?.data) {
         const { token: userToken, ...restUserData } = data.data;
         userData = restUserData;
         token = userToken;
