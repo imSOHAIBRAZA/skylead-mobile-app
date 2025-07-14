@@ -1594,7 +1594,7 @@ import { BlurView } from 'expo-blur';
 import { ThemedView } from '@/components/ThemedView';
 import Header from '@/components/header';
 
-import {Ionicons} from '@expo/vector-icons';
+import { FontAwesome6,FontAwesome5,Ionicons } from '@expo/vector-icons';
 
 const { width } = Dimensions.get('window');
 
@@ -1848,14 +1848,16 @@ const CallHistory: React.FC = () => {
             style={[styles.actionBtn, styles.btnCallback]}
             onPress={ () => handlePhoneCall(item.phone)}
           >
-            <Text style={styles.btnCallbackText}>📞 Call Back</Text>
+            <FontAwesome5 name="phone-alt" size={14} color="#fff" /> 
+            <Text style={styles.btnCallbackText}> Call Back</Text>
           </TouchableOpacity>
           
           <TouchableOpacity
             style={[styles.actionBtn, styles.btnDetails]}
             onPress={() => handleShowDetails(item.name)}
           >
-            <Text style={styles.btnDetailsText}>📋 Details</Text>
+            <FontAwesome5 name="list" size={14} color="#6b7280" />
+            <Text style={styles.btnDetailsText}>Details</Text>
           </TouchableOpacity>
         </View>
       </Animated.View>
@@ -1864,7 +1866,8 @@ const CallHistory: React.FC = () => {
 
   const EmptyState: React.FC = () => (
     <View style={styles.emptyState}>
-      <Text style={styles.emptyIcon}>📞</Text>
+      <FontAwesome5 name="phone-alt" size={28} color="white" /> 
+      {/* <Text style={styles.emptyIcon}></Text> */}
       <Text style={styles.emptyTitle}>
         No {activeFilter === 'all' ? '' : activeFilter} calls found
       </Text>
@@ -2230,15 +2233,19 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     flex: 1,
     alignItems: 'center',
+    flexDirection:'row',
+    justifyContent:'center'
   },
 
   btnCallback: {
     backgroundColor: '#4ade80',
+    
   },
   btnCallbackText: {
     color: 'white',
     fontSize: 12,
     fontWeight: '500',
+    marginLeft: 8,
   },
   btnDetails: {
     backgroundColor: '#f3f4f6',
@@ -2247,6 +2254,7 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     fontSize: 12,
     fontWeight: '500',
+    marginLeft: 8,
   },
   emptyState: {
     alignItems: 'center',
@@ -2262,6 +2270,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 8,
     color: 'rgba(255, 255, 255, 0.8)',
+    marginTop:10
   },
   emptySubtitle: {
     fontSize: 14,

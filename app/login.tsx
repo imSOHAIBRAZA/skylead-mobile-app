@@ -371,7 +371,7 @@ export default function LoginScreen() {
             </Text>
             <TouchableOpacity style={styles.supportEmailContainer}>
               <Text style={styles.supportIcon}>📧</Text>
-              <Text style={styles.supportEmail}>support@skylead.com</Text>
+              <Text style={styles.supportEmail}>support@skyos.me</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>

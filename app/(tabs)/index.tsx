@@ -1371,6 +1371,7 @@ import {
 import { BlurView } from 'expo-blur';
 import { ThemedView } from '@/components/ThemedView';
 import Header from '@/components/header';
+import { FontAwesome6,FontAwesome5,Ionicons } from '@expo/vector-icons';
 
 const { width } = Dimensions.get('window');
 
@@ -1591,14 +1592,21 @@ const CallDashboard: React.FC = () => {
             style={[styles.btn, styles.btnAccept]}
             onPress={() => handleCallAction(request.id, 'accept')}
           >
-            <Text style={styles.btnAcceptText}>📞 Accept & Call</Text>
+            <FontAwesome5 name="phone-alt" size={14} color="#fff" /> 
+            <Text style={styles.btnAcceptText}>
+              
+              Accept & Call
+              </Text>
           </TouchableOpacity>
           
           <TouchableOpacity
             style={[styles.btn, styles.btnReject]}
             onPress={() => handleCallAction(request.id, 'reject')}
           >
-            <Text style={styles.btnRejectText}>❌ Decline</Text>
+            <FontAwesome5 name="phone-slash" size={14} color="#6b7280" /> 
+            <Text style={styles.btnRejectText}>
+               Decline
+              </Text>
           </TouchableOpacity>
         </View>
       </Animated.View>
@@ -1607,7 +1615,8 @@ const CallDashboard: React.FC = () => {
 
   const EmptyState: React.FC = () => (
     <View style={styles.emptyState}>
-      <Text style={styles.emptyIcon}>📞</Text>
+     
+        <FontAwesome5 name="phone-alt" size={28} color="white" /> 
       <Text style={styles.emptyTitle}>No Pending Calls</Text>
       <Text style={styles.emptySubtitle}>All caught up! New call requests will appear here.</Text>
     </View>
@@ -1865,14 +1874,18 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 12,
     alignItems: 'center',
+    flexDirection:'row',
+    justifyContent:'center'
   },
   btnAccept: {
     backgroundColor: '#4ade80',
+
   },
   btnAcceptText: {
     color: 'white',
     fontSize: 14,
     fontWeight: '600',
+    marginLeft: 8,
   },
   btnReject: {
     backgroundColor: '#f3f4f6',
@@ -1883,6 +1896,7 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     fontSize: 14,
     fontWeight: '600',
+    marginLeft: 8,
   },
   processingContainer: {
     alignItems: 'center',
@@ -1915,6 +1929,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     marginBottom: 8,
+    marginTop: 10,
     color: 'rgba(255, 255, 255, 0.8)',
   },
   emptySubtitle: {
