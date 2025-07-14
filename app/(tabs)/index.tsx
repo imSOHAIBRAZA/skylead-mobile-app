@@ -1603,7 +1603,7 @@ const CallDashboard: React.FC = () => {
             style={[styles.btn, styles.btnReject]}
             onPress={() => handleCallAction(request.id, 'reject')}
           >
-            <FontAwesome5 name="phone-slash" size={14} color="#6b7280" /> 
+            <FontAwesome5 name="phone-slash" size={14} color="white" /> 
             <Text style={styles.btnRejectText}>
                Decline
               </Text>
@@ -1888,12 +1888,12 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   btnReject: {
-    backgroundColor: '#f3f4f6',
+    backgroundColor: 'red',
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: 'red',
   },
   btnRejectText: {
-    color: '#6b7280',
+    color: 'white',
     fontSize: 14,
     fontWeight: '600',
     marginLeft: 8,
