@@ -1489,7 +1489,7 @@ const CallDashboard: React.FC = () => {
     
     const randomIndex = Math.floor(Math.random() * names.length);
     const name = names[randomIndex];
-    const initials = name.split(' ').map(n => n[0]).join('');
+    const initials = name?.split(' ')?.map(n => n[0]).join('');
     
     const newRequest: CallRequest = {
       id: Date.now().toString(),
