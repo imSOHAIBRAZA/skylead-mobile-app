@@ -1,5 +1,4 @@
 
-
 import React, { useState } from "react";
 import {
   View,
@@ -470,3 +469,423 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.3)',
   },
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//********* ✅REAL TIME DATA FETCHING FUNCATIONALITY ********//
+
+
+
+// import React, { useEffect, useState, useRef } from 'react';
+// import { Text, Alert, View, StyleSheet, TouchableOpacity } from 'react-native';
+// import Pusher from 'pusher-js/react-native';
+// import AsyncStorage from '@react-native-async-storage/async-storage';
+// import { useAuth } from "@/context/AuthContext";
+
+// export default function UserProfileScreen() {
+//   const { user } = useAuth();
+//   const [connectionStatus, setConnectionStatus] = useState('disconnected');
+//   const [subscriptionStatus, setSubscriptionStatus] = useState('not_subscribed');
+//   const [lastMessage, setLastMessage] = useState(null);
+//   const [debugLogs, setDebugLogs] = useState([]);
+//   const pusherRef = useRef(null);
+
+//   // Debug logging function
+//   const addDebugLog = (message, type = 'info') => {
+//     const timestamp = new Date().toLocaleTimeString();
+//     const logEntry = { timestamp, message, type };
+//     setDebugLogs(prev => [...prev.slice(-9), logEntry]); // Keep last 10 logs
+//     console.log(`[${timestamp}] ${message}`);
+//   };
+
+//   const connectToPusher = async () => {
+//     try {
+//       addDebugLog('🔄 Starting Pusher connection...', 'info');
+      
+//       const token = await AsyncStorage.getItem('userToken');
+//       const userId = user?.id;
+
+//       if (!token || !userId) {
+//         addDebugLog('❌ Missing token or user ID', 'error');
+//         setConnectionStatus('error');
+//         return;
+//       }
+
+//       addDebugLog(`👤 User ID: ${userId}`, 'info');
+
+//       // Disconnect existing connection if any
+//       if (pusherRef.current) {
+//         pusherRef.current.disconnect();
+//       }
+
+//       const pusher = new Pusher('b71a5e925d7e4b40fad3', {
+//         cluster: 'ap2',
+//         // Authentication is REQUIRED for private channels
+//         authEndpoint: 'https://backend.skyleadcrm.io/broadcasting/auth',
+//         auth: {
+//           headers: {
+//             Authorization: `Bearer ${token}`,
+//             Accept: 'application/json',
+//             'Content-Type': 'application/x-www-form-urlencoded',
+//           },
+//         },
+//         enabledTransports: ['ws', 'wss'],
+//         disabledTransports: ['xhr_polling', 'xhr_streaming'],
+//       });
+
+//       pusherRef.current = pusher;
+
+//       // Connection event handlers
+//       pusher.connection.bind('connected', () => {
+//         addDebugLog('✅ Pusher connected successfully', 'success');
+//         setConnectionStatus('connected');
+//       });
+
+//       pusher.connection.bind('connecting', () => {
+//         addDebugLog('🔄 Pusher connecting...', 'info');
+//         setConnectionStatus('connecting');
+//       });
+
+//       pusher.connection.bind('disconnected', () => {
+//         addDebugLog('🔌 Pusher disconnected', 'warning');
+//         setConnectionStatus('disconnected');
+//       });
+
+//       pusher.connection.bind('error', (err) => {
+//         addDebugLog(`❌ Pusher connection error: ${JSON.stringify(err)}`, 'error');
+//         setConnectionStatus('error');
+//       });
+
+//       pusher.connection.bind('state_change', (states) => {
+//         addDebugLog(`🔄 State change: ${states.previous} → ${states.current}`, 'info');
+//       });
+
+//       // Subscribe to PRIVATE channel (auth required) - ADD 'private-' prefix
+//       const channelName = `private-trigercall.${userId}`;
+//       addDebugLog(`📡 Subscribing to PRIVATE channel: ${channelName}`, 'info');
+      
+//       const channel = pusher.subscribe(channelName);
+
+//       channel.bind('pusher:subscription_succeeded', () => {
+//         addDebugLog(`✅ Successfully subscribed to PRIVATE channel: ${channelName}`, 'success');
+//         setSubscriptionStatus('subscribed');
+//       });
+
+//       // Handle subscription errors for private channels
+//       channel.bind('pusher:subscription_error', (error) => {
+//         addDebugLog(`❌ Subscription error: ${JSON.stringify(error)}`, 'error');
+//         setSubscriptionStatus('error');
+//       });
+
+//       // Bind to your custom event - use the FULL class name as shown in backend
+//       channel.bind('App\\Events\\CallNotification', (data) => {
+//         addDebugLog(`📞 Received call notification: ${JSON.stringify(data)}`, 'success');
+//         setLastMessage(data);
+
+//         // Access the data property which contains your actual message
+//         const messageText = data?.data?.message || data?.message || 'You have a new call';
+
+//         // Show alert popup
+//         Alert.alert(
+//           '📞 Incoming Call', 
+//           messageText,
+//           [
+//             {
+//               text: 'OK',
+//               onPress: () => addDebugLog('✅ User acknowledged call notification', 'info')
+//             }
+//           ]
+//         );
+//       });
+
+//       // Test connection after a delay
+//       setTimeout(() => {
+//         testConnection(pusher);
+//       }, 3000);
+
+//       return pusher;
+//     } catch (error) {
+//       addDebugLog(`💥 Error in connectToPusher: ${error.message}`, 'error');
+//       setConnectionStatus('error');
+//     }
+//   };
+
+//   // Test connection function
+//   const testConnection = (pusher) => {
+//     if (pusher && pusher.connection.state === 'connected') {
+//       addDebugLog('🧪 Connection test: PASSED', 'success');
+//     } else {
+//       addDebugLog('🧪 Connection test: FAILED', 'error');
+//     }
+//   };
+
+//   // Debug auth endpoint
+//   const debugAuthEndpoint = async () => {
+//     try {
+//       const token = await AsyncStorage.getItem('userToken');
+//       const userId = user?.id;
+      
+//       if (!token || !userId) {
+//         addDebugLog('❌ Cannot test auth - missing token or user ID', 'error');
+//         return;
+//       }
+
+//       if (!pusherRef.current || !pusherRef.current.connection) {
+//         addDebugLog('❌ Cannot test auth - Pusher not connected', 'error');
+//         return;
+//       }
+
+//       const socketId = pusherRef.current.connection.socket_id;
+      
+//       if (!socketId) {
+//         addDebugLog('❌ Cannot test auth - no socket ID available', 'error');
+//         return;
+//       }
+
+//       addDebugLog('🔍 Testing auth endpoint...', 'info');
+//       addDebugLog(`📡 Using socket ID: ${socketId}`, 'info');
+      
+//       // Test the auth endpoint directly with PRIVATE channel name and real socket_id
+//       const response = await fetch('https://backend.skyleadcrm.io/broadcasting/auth', {
+//         method: 'POST',
+//         headers: {
+//           'Authorization': `Bearer ${token}`,
+//           'Accept': 'application/json',
+//           'Content-Type': 'application/x-www-form-urlencoded',
+//         },
+//         body: `channel_name=private-trigercall.${userId}&socket_id=${socketId}`
+//       });
+
+//       const responseText = await response.text();
+//       addDebugLog(`📋 Auth response status: ${response.status}`, 'info');
+//       addDebugLog(`📋 Auth response: "${responseText}"`, 'info');
+      
+//       if (!responseText || responseText.trim() === '') {
+//         addDebugLog('❌ Auth endpoint returned empty response!', 'error');
+//       } else {
+//         try {
+//           const parsedResponse = JSON.parse(responseText);
+//           // console.log("parsedResponse++++>",parsedResponse)
+//           addDebugLog('✅ Auth response is valid JSON', 'success');
+//           // Check if it contains auth signature
+//           if (parsedResponse.auth) {
+//             addDebugLog('✅ Auth signature found in response', 'success');
+//           } else {
+//             addDebugLog('❌ No auth signature in response', 'error');
+//           }
+//         } catch (e) {
+//           addDebugLog('❌ Auth response is not valid JSON', 'error');
+//         }
+//       }
+//     } catch (error) {
+//       addDebugLog(`💥 Auth test error: ${error.message}`, 'error');
+//     }
+//   };
+
+//   // Manual reconnect function
+//   const handleReconnect = () => {
+//     addDebugLog('🔄 Manual reconnect initiated...', 'info');
+//     setSubscriptionStatus('not_subscribed');
+//     connectToPusher();
+//   };
+
+//   // Test notification function (for debugging)
+//   const testNotification = () => {
+//     const testData = {
+//       data: {
+//         message: 'Test notification from client',
+//         user_id: user?.id,
+//         timestamp: new Date().toISOString()
+//       }
+//     };
+//     setLastMessage(testData);
+//     Alert.alert('🧪 Test Notification', testData.data.message);
+//     addDebugLog('🧪 Test notification triggered', 'info');
+//   };
+
+//   useEffect(() => {
+//     connectToPusher();
+
+//     // Cleanup on unmount
+//     return () => {
+//       if (pusherRef.current) {
+//         addDebugLog('🧹 Cleaning up Pusher connection...', 'info');
+//         pusherRef.current.disconnect();
+//       }
+//     };
+//   }, [user?.id]); // Reconnect if user ID changes
+
+//   const getStatusColor = (status) => {
+//     switch (status) {
+//       case 'connected': return '#4CAF50';
+//       case 'connecting': return '#FF9800';
+//       case 'subscribed': return '#4CAF50';
+//       case 'error': return '#F44336';
+//       default: return '#9E9E9E';
+//     }
+//   };
+
+//   const getLogColor = (type) => {
+//     switch (type) {
+//       case 'success': return '#4CAF50';
+//       case 'error': return '#F44336';
+//       case 'warning': return '#FF9800';
+//       default: return '#333';
+//     }
+//   };
+
+//   return (
+//     <View style={styles.container}>
+//       <Text style={styles.title}>📡 Real-time Call Notifications</Text>
+      
+//       {/* User Info */}
+//       <View style={styles.statusContainer}>
+//         <Text style={styles.userInfo}>👤 User ID: {user?.id || 'Not logged in'}</Text>
+//         <Text style={styles.userInfo}>📡 Channel: private-trigercall.{user?.id || 'N/A'}</Text>
+//       </View>
+      
+//       {/* Status Display */}
+//       <View style={styles.statusContainer}>
+//         <View style={styles.statusRow}>
+//           <Text>Connection: </Text>
+//           <Text style={[styles.status, { color: getStatusColor(connectionStatus) }]}>
+//             {connectionStatus.toUpperCase()}
+//           </Text>
+//         </View>
+//         <View style={styles.statusRow}>
+//           <Text>Subscription: </Text>
+//           <Text style={[styles.status, { color: getStatusColor(subscriptionStatus) }]}>
+//             {subscriptionStatus.replace('_', ' ').toUpperCase()}
+//           </Text>
+//         </View>
+//       </View>
+
+//       {/* Control Buttons */}
+//       <View style={styles.buttonContainer}>
+//         <TouchableOpacity style={styles.button} onPress={handleReconnect}>
+//           <Text style={styles.buttonText}>🔄 Reconnect</Text>
+//         </TouchableOpacity>
+//         <TouchableOpacity style={styles.button} onPress={testNotification}>
+//           <Text style={styles.buttonText}>🧪 Test Alert</Text>
+//         </TouchableOpacity>
+//         <TouchableOpacity style={styles.button} onPress={debugAuthEndpoint}>
+//           <Text style={styles.buttonText}>🔍 Test Auth</Text>
+//         </TouchableOpacity>
+//       </View>
+
+//       {/* Last Message Display */}
+//       {lastMessage && (
+//         <View style={styles.messageContainer}>
+//           <Text style={styles.messageTitle}>📋 Last Message:</Text>
+//           <Text style={styles.messageText}>{JSON.stringify(lastMessage, null, 2)}</Text>
+//         </View>
+//       )}
+
+//       {/* Debug Logs */}
+//       <View style={styles.logsContainer}>
+//         <Text style={styles.logsTitle}>🐛 Debug Logs:</Text>
+//         {debugLogs.map((log, index) => (
+//           <Text key={index} style={[styles.logText, { color: getLogColor(log.type) }]}>
+//             [{log.timestamp}] {log.message}
+//           </Text>
+//         ))}
+//       </View>
+//     </View>
+//   );
+// }
+
+// const styles = StyleSheet.create({
+//   container: {
+//     flex: 1,
+//     padding: 16,
+//     backgroundColor: '#f5f5f5',
+//   },
+//   title: {
+//     fontSize: 18,
+//     fontWeight: 'bold',
+//     marginBottom: 16,
+//     textAlign: 'center',
+//   },
+//   statusContainer: {
+//     backgroundColor: 'white',
+//     padding: 16,
+//     borderRadius: 8,
+//     marginBottom: 16,
+//   },
+//   statusRow: {
+//     flexDirection: 'row',
+//     marginBottom: 8,
+//   },
+//   status: {
+//     fontWeight: 'bold',
+//   },
+//   userInfo: {
+//     fontSize: 14,
+//     marginBottom: 4,
+//     color: '#666',
+//   },
+//   buttonContainer: {
+//     flexDirection: 'row',
+//     justifyContent: 'space-around',
+//     marginBottom: 16,
+//   },
+//   button: {
+//     backgroundColor: '#007AFF',
+//     padding: 12,
+//     borderRadius: 8,
+//     minWidth: 120,
+//     alignItems: 'center',
+//   },
+//   buttonText: {
+//     color: 'white',
+//     fontWeight: 'bold',
+//   },
+//   messageContainer: {
+//     backgroundColor: 'white',
+//     padding: 16,
+//     borderRadius: 8,
+//     marginBottom: 16,
+//   },
+//   messageTitle: {
+//     fontWeight: 'bold',
+//     marginBottom: 8,
+//   },
+//   messageText: {
+//     fontFamily: 'monospace',
+//     fontSize: 12,
+//     backgroundColor: '#f0f0f0',
+//     padding: 8,
+//     borderRadius: 4,
+//   },
+//   logsContainer: {
+//     backgroundColor: 'white',
+//     padding: 16,
+//     borderRadius: 8,
+//     flex: 1,
+//   },
+//   logsTitle: {
+//     fontWeight: 'bold',
+//     marginBottom: 8,
+//   },
+//   logText: {
+//     fontSize: 12,
+//     fontFamily: 'monospace',
+//     marginBottom: 2,
+//   },
+// });

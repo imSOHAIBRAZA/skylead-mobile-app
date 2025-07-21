@@ -1353,25 +1353,840 @@
 
 
 
-import React, { useState, useEffect } from 'react';
+// import React, { useState, useEffect,useRef } from 'react';
+// import {
+//   View,
+//   Text,
+//   StyleSheet,
+//   ScrollView,
+//   TouchableOpacity,
+//   Animated,
+//   Dimensions,
+//   StatusBar,
+//   Linking,
+//   Alert,
+//   FlatList,
+// } from 'react-native';
+// // import { LinearGradient } from 'expo-linear-gradient';
+// import { BlurView } from 'expo-blur';
+// import { ThemedView } from '@/components/ThemedView';
+// import Header from '@/components/header';
+// import { FontAwesome6,FontAwesome5,Ionicons } from '@expo/vector-icons';
+// import Pusher from 'pusher-js/react-native';
+// import AsyncStorage from '@react-native-async-storage/async-storage';
+// import { useAuth } from "@/context/AuthContext";
+// import TextAvatar from "react-native-text-avatar";
+
+
+// const { width } = Dimensions.get('window');
+
+// interface CallRequest {
+//   id: string;
+//   name: string;
+//   phone: string;
+//   initials: string;
+//   type: string;
+//   purpose: string;
+//   timeAgo: string;
+//   isProcessing?: boolean;
+//   processType?: 'accept' | 'reject';
+// }
+
+// const CallDashboard: React.FC = () => {
+
+//   const { user } = useAuth();
+//   const [connectionStatus, setConnectionStatus] = useState('disconnected');
+//   const [subscriptionStatus, setSubscriptionStatus] = useState('not_subscribed');
+//   const [lastMessage, setLastMessage] = useState(null);
+//   const [debugLogs, setDebugLogs] = useState([]);
+//   const pusherRef = useRef(null);
+
+//   const [callRequests, setCallRequests] = useState<CallRequest[]>([
+//     // {
+//     //   id: '1',
+//     //   name: 'Alice Miller',
+//     //   phone: '+1 (555) 123-4567',
+//     //   initials: 'AM',
+//     //   type: 'Sales Inquiry',
+//     //   purpose: 'Interested in premium package consultation and pricing details',
+//     //   timeAgo: '2 min ago',
+//     // },
+//     // {
+//     //   id: '2',
+//     //   name: 'Robert Johnson',
+//     //   phone: '+1 (555) 987-6543',
+//     //   initials: 'RJ',
+//     //   type: 'Support',
+//     //   purpose: 'Technical support needed for account setup and configuration',
+//     //   timeAgo: '5 min ago',
+//     // },
+//     // {
+//     //   id: '3',
+//     //   name: 'Sarah Davis',
+//     //   phone: '+1 (555) 456-7890',
+//     //   initials: 'SD',
+//     //   type: 'Follow-up',
+//     //   purpose: 'Follow-up call regarding previous meeting and next steps',
+//     //   timeAgo: '8 min ago',
+//     // },
+//   ]);
+
+//   const [todayCalls] = useState(12);
+//   const [activeTab, setActiveTab] = useState('dashboard');
+
+//   // Debug logging function
+//   const addDebugLog = (message, type = 'info') => {
+//     const timestamp = new Date().toLocaleTimeString();
+//     const logEntry = { timestamp, message, type };
+//     // setDebugLogs(prev => [...prev.slice(-9), logEntry]); // Keep last 10 logs
+//     console.log(`[${timestamp}] ${message}`);
+//   };
+
+//   const connectToPusher = async () => {
+//     try {
+//       addDebugLog('🔄 Starting Pusher connection...', 'info');
+      
+//       const token = await AsyncStorage.getItem('userToken');
+//       const userId = user?.id;
+
+//       if (!token || !userId) {
+//         addDebugLog('❌ Missing token or user ID', 'error');
+//         setConnectionStatus('error');
+//         return;
+//       }
+
+//       addDebugLog(`👤 User ID: ${userId}`, 'info');
+
+//       // Disconnect existing connection if any
+//       if (pusherRef.current) {
+//         pusherRef.current.disconnect();
+//       }
+
+//       const pusher = new Pusher('b71a5e925d7e4b40fad3', {
+//         cluster: 'ap2',
+//         // Authentication is REQUIRED for private channels
+//         authEndpoint: 'https://backend.skyleadcrm.io/broadcasting/auth',
+//         auth: {
+//           headers: {
+//             Authorization: `Bearer ${token}`,
+//             Accept: 'application/json',
+//             'Content-Type': 'application/x-www-form-urlencoded',
+//           },
+//         },
+//         enabledTransports: ['ws', 'wss'],
+//         disabledTransports: ['xhr_polling', 'xhr_streaming'],
+//       });
+
+//       pusherRef.current = pusher;
+
+//       // Connection event handlers
+//       pusher.connection.bind('connected', () => {
+//         addDebugLog('✅ Pusher connected successfully', 'success');
+//         setConnectionStatus('connected');
+//       });
+
+//       pusher.connection.bind('connecting', () => {
+//         addDebugLog('🔄 Pusher connecting...', 'info');
+//         setConnectionStatus('connecting');
+//       });
+
+//       pusher.connection.bind('disconnected', () => {
+//         addDebugLog('🔌 Pusher disconnected', 'warning');
+//         setConnectionStatus('disconnected');
+//       });
+
+//       pusher.connection.bind('error', (err) => {
+//         addDebugLog(`❌ Pusher connection error: ${JSON.stringify(err)}`, 'error');
+//         setConnectionStatus('error');
+//       });
+
+//       pusher.connection.bind('state_change', (states) => {
+//         addDebugLog(`🔄 State change: ${states.previous} → ${states.current}`, 'info');
+//       });
+
+//       // Subscribe to PRIVATE channel (auth required) - ADD 'private-' prefix
+//       const channelName = `private-trigercall.${userId}`;
+//       addDebugLog(`📡 Subscribing to PRIVATE channel: ${channelName}`, 'info');
+      
+//       const channel = pusher.subscribe(channelName);
+
+//       channel.bind('pusher:subscription_succeeded', () => {
+//         addDebugLog(`✅ Successfully subscribed to PRIVATE channel: ${channelName}`, 'success');
+//         setSubscriptionStatus('subscribed');
+//       });
+
+//       // Handle subscription errors for private channels
+//       channel.bind('pusher:subscription_error', (error) => {
+//         addDebugLog(`❌ Subscription error: ${JSON.stringify(error)}`, 'error');
+//         setSubscriptionStatus('error');
+//       });
+
+//       // Bind to your custom event - use the FULL class name as shown in backend
+//       channel.bind('App\\Events\\CallNotification', (data) => {
+//         addDebugLog(`📞 Received call notification: ${JSON.stringify(data)}`, 'success');
+//         // const transformedData = transformCallHistoryData(data?.data);
+//         setCallRequests(prev => [
+//           {
+//             id: data.data.lead_id,
+//             name: data.data.lead.client_name || data.data.lead.lead_name || "-",
+//             phone: data.data.phone,
+//             initials: data.data.initials || data?.data?.name?.split(' ')?.map(n => n[0]).join(''),
+//             type: data.data.type || 'Unknown',
+//             purpose: data.data.purpose || 'No purpose provided',
+//             timeAgo: data.data.lead.last_assign_date || 'Just now',
+//           },
+//           ...prev
+//         ]);
+//         setLastMessage(data);
+
+//         // Access the data property which contains your actual message
+//         const messageText = data?.data?.message || data?.message || 'You have a new call';
+
+//         // Show alert popup
+//         // Alert.alert(
+//         //   '📞 Incoming Call', 
+//         //   messageText,
+//         //   [
+//         //     {
+//         //       text: 'OK',
+//         //       onPress: () => addDebugLog('✅ User acknowledged call notification', 'info')
+//         //     }
+//         //   ]
+//         // );
+//       });
+
+     
+//       return pusher;
+//     } catch (error) {
+//       addDebugLog(`💥 Error in connectToPusher: ${error.message}`, 'error');
+//       setConnectionStatus('error');
+//     }
+//   };
+
+//   useEffect(() => {
+//     connectToPusher();
+
+//     // Cleanup on unmount
+//     return () => {
+//       if (pusherRef.current) {
+//         addDebugLog('🧹 Cleaning up Pusher connection...', 'info');
+//         pusherRef.current.disconnect();
+//       }
+//     };
+//   }, [user?.id]); // Reconnect if user ID changes
+
+//   // Function to handle phone dialing
+//   const handlePhoneCall = async (phoneNumber: string) => {
+//     try {
+//       // Clean the phone number (remove spaces, parentheses, and dashes)
+//       const cleanPhoneNumber = phoneNumber.replace(/[\s\(\)\-]/g, '');
+//       const phoneUrl = `tel:${cleanPhoneNumber}`;
+      
+//       // Check if the device can handle the tel: URL
+//       const supported = await Linking.canOpenURL(phoneUrl);
+      
+//       if (supported) {
+//         await Linking.openURL(phoneUrl);
+//       } else {
+//         Alert.alert(
+//           'Phone Not Available',
+//           'Phone dialing is not available on this device',
+//           [{ text: 'OK' }]
+//         );
+//       }
+//     } catch (error) {
+//       console.error('Error opening phone dialer:', error);
+//       Alert.alert(
+//         'Error',
+//         'Failed to open phone dialer. Please try again.',
+//         [{ text: 'OK' }]
+//       );
+//     }
+//   };
+
+//   const handleCallAction = async (id: string, action: 'accept' | 'reject') => {
+//     if (action === 'accept') {
+//       // Find the call request to get the phone number
+//       const callRequest = callRequests.find(call => call.id === id);
+      
+//       if (callRequest) {
+//         // Open phone dialer
+//         await handlePhoneCall(callRequest.phone);
+//       }
+//     }
+
+//     // Update the UI to show processing state
+//     setCallRequests(prev =>
+//       prev.map(call =>
+//         call.id === id
+//           ? { ...call, isProcessing: true, processType: action }
+//           : call
+//       )
+//     );
+
+//     // Simulate processing delay and remove from list
+//     setTimeout(() => {
+//       setCallRequests(prev => prev.filter(call => call.id !== id));
+//     }, 2000);
+//   };
+
+//   const addNewCallRequest = () => {
+//     const names = ['Michael Brown', 'Emma Wilson', 'David Lee', 'Lisa Garcia'];
+//     const phones = ['+1 (555) 111-2222', '+1 (555) 333-4444', '+1 (555) 555-6666', '+1 (555) 777-8888'];
+//     const types = ['Sales Inquiry', 'Support', 'Follow-up', 'Consultation'];
+//     const purposes = [
+//       'Interested in enterprise solutions',
+//       'Need help with account issues',
+//       'Discussing project requirements',
+//       'Requesting product demonstration'
+//     ];
+    
+//     const randomIndex = Math.floor(Math.random() * names.length);
+//     const name = names[randomIndex];
+//     const initials = name?.split(' ')?.map(n => n[0]).join('');
+    
+//     const newRequest: CallRequest = {
+//       id: Date.now().toString(),
+//       name,
+//       phone: phones[randomIndex],
+//       initials,
+//       type: types[randomIndex],
+//       purpose: purposes[randomIndex],
+//       timeAgo: 'Just now',
+//     };
+    
+//     setCallRequests(prev => [newRequest, ...prev]);
+//   };
+
+//   // useEffect(() => {
+//   //   const interval = setInterval(addNewCallRequest, 30000);
+//   //   return () => clearInterval(interval);
+//   // }, []);
+
+//   const CallRequestCard: React.FC<{ request: CallRequest }> = ({ request }) => {
+//     const slideAnim = new Animated.Value(0);
+
+//     useEffect(() => {
+//       Animated.timing(slideAnim, {
+//         toValue: 1,
+//         duration: 300,
+//         useNativeDriver: true,
+//       }).start();
+//     }, []);
+
+//     if (request.isProcessing) {
+//       return (
+//         <View style={styles.callRequest}>
+//           <View style={styles.processingContainer}>
+//             <Text style={styles.processingIcon}>
+//               {request.processType === 'accept' ? '✅' : '❌'}
+//             </Text>
+//             <Text style={styles.processingTitle}>
+//               {request.processType === 'accept' ? 'Call Accepted' : 'Call Declined'}
+//             </Text>
+//             <Text style={styles.processingSubtitle}>
+//               {request.processType === 'accept' 
+//                 ? `Opening dialer for ${request.name}...` 
+//                 : `${request.name} has been notified`}
+//             </Text>
+//           </View>
+//         </View>
+//       );
+//     }
+
+//     return (
+//       <Animated.View
+//         style={[
+//           styles.callRequest,
+//           {
+//             opacity: slideAnim,
+//             transform: [
+//               {
+//                 translateY: slideAnim.interpolate({
+//                   inputRange: [0, 1],
+//                   outputRange: [20, 0],
+//                 }),
+//               },
+//             ],
+//           },
+//         ]}
+//       >
+//         <View style={styles.callHeader}>
+//           {/* <LinearGradient
+//             colors={['#4ade80', '#22c55e']}
+//             style={styles.callerAvatar}
+//           > 
+//             <Text style={styles.callerInitials}>{request.initials}</Text>
+//           </LinearGradient> */}
+//            <TextAvatar
+//               backgroundColor={"#4ade80"} // optional
+//               textColor={"#fff"}
+//               size={36}
+//               type={"circle"} // optional
+//             >
+//               {request?.name|| "User Name"}
+//             </TextAvatar>
+
+            
+          
+//           <View style={styles.callerInfo}>
+//             <Text style={styles.callerName}>{request.name}</Text>
+//             {/* <TouchableOpacity 
+//               onPress={() => handlePhoneCall(request.phone)}
+//               style={styles.phoneNumberContainer}
+//             > */}
+//               <Text style={styles.callerDetails}>{request.phone}</Text>
+//             {/* </TouchableOpacity> */}
+//           </View>
+          
+//           <View style={styles.callTimeContainer}>
+//             <Text style={styles.callTime}>{request.timeAgo}</Text>
+//           </View>
+//         </View>
+
+//         <View style={styles.callInfo}>
+//           {/* <View style={styles.callTypeContainer}>
+//             <Text style={styles.callType}>{request.type}</Text>
+//           </View> */}
+//           {/* <Text style={styles.callPurpose}>{request.purpose}</Text> */}
+//         </View>
+
+//         <View style={styles.callActions}>
+//           <TouchableOpacity
+//             style={[styles.btn, styles.btnAccept]}
+//             onPress={() => handleCallAction(request.id, 'accept')}
+//           >
+//             <FontAwesome5 name="phone-alt" size={14} color="#fff" /> 
+//             <Text style={styles.btnAcceptText}>
+              
+//               Accept & Call
+//               </Text>
+//           </TouchableOpacity>
+          
+//           <TouchableOpacity
+//             style={[styles.btn, styles.btnReject]}
+//             onPress={() => handleCallAction(request.id, 'reject')}
+//           >
+//             <FontAwesome5 name="phone-slash" size={14} color="white" /> 
+//             <Text style={styles.btnRejectText}>
+//                Decline
+//               </Text>
+//           </TouchableOpacity>
+//         </View>
+//       </Animated.View>
+//     );
+//   };
+
+//   const EmptyState: React.FC = () => (
+//     <View style={styles.emptyState}>
+     
+//         <FontAwesome5 name="phone-alt" size={28} color="white" /> 
+//       <Text style={styles.emptyTitle}>No Pending Calls</Text>
+//       <Text style={styles.emptySubtitle}>All caught up! New call requests will appear here.</Text>
+//     </View>
+//   );
+
+//   const renderCallRequest = ({ item }: { item: CallRequest }) => (
+//     <CallRequestCard request={item} />
+//   );
+
+//   const renderListHeader = () => (
+//     <View>
+//       <Text style={styles.pageTitle}>Call Dashboard</Text>
+//       <Text style={styles.pageSubtitle}>Manage incoming call requests</Text>
+
+//       {/* Stats */}
+//       <View style={styles.statsGrid}>
+//         <View style={styles.statCard}>
+//           <Text style={styles.statNumber}>{callRequests.length}</Text>
+//           <Text style={styles.statLabel}>Pending Calls</Text>
+//         </View>
+        
+//         <View style={styles.statCard}>
+//           <Text style={styles.statNumber}>{todayCalls}</Text>
+//           <Text style={styles.statLabel}>Today's Calls</Text>
+//         </View>
+//       </View>
+
+//       <Text style={styles.sectionTitle}>Incoming Requests</Text>
+//     </View>
+//   );
+
+//   const renderListEmpty = () => <EmptyState />;
+
+//   return (
+//     <ThemedView style={styles.container}>
+//       <Header />
+
+//       <FlatList
+//         data={callRequests}
+//         renderItem={renderCallRequest}
+//         keyExtractor={(item) => item.id}
+//         showsVerticalScrollIndicator={false}
+//         contentContainerStyle={styles.flatListContainer}
+//         ListHeaderComponent={renderListHeader}
+//         ListEmptyComponent={renderListEmpty}
+//         ItemSeparatorComponent={() => <View style={styles.itemSeparator} />}
+//         // Optional: Add performance optimizations
+//         removeClippedSubviews={true}
+//         maxToRenderPerBatch={10}
+//         windowSize={10}
+//         initialNumToRender={10}
+//         getItemLayout={(data, index) => (
+//           {length: 200, offset: 200 * index, index} // Approximate item height
+//         )}
+//       />
+//     </ThemedView>
+//   );
+// };
+
+// const styles = StyleSheet.create({
+//   container: {
+//     flex: 1,
+//     paddingTop: 50,
+//   },
+//   flatListContainer: {
+//     paddingHorizontal: 20,
+//     paddingBottom: 100,
+//   },
+//   itemSeparator: {
+//     height: 0, // No separator needed as cards have their own margin
+//   },
+//   header: {
+//     flexDirection: 'row',
+//     justifyContent: 'space-between',
+//     alignItems: 'center',
+//     paddingHorizontal: 20,
+//     paddingBottom: 30,
+//   },
+//   logo: {
+//     flexDirection: 'row',
+//     alignItems: 'center',
+//     gap: 8,
+//   },
+//   logoIcon: {
+//     width: 24,
+//     height: 24,
+//     backgroundColor: '#4ade80',
+//     borderRadius: 4,
+//     justifyContent: 'center',
+//     alignItems: 'center',
+//   },
+//   logoIconText: {
+//     color: 'white',
+//     fontWeight: 'bold',
+//     fontSize: 14,
+//   },
+//   logoText: {
+//     color: 'white',
+//     fontSize: 18,
+//     fontWeight: '600',
+//   },
+//   userInfo: {
+//     flexDirection: 'row',
+//     alignItems: 'center',
+//     gap: 10,
+//   },
+//   userName: {
+//     color: 'rgba(255, 255, 255, 0.9)',
+//     fontSize: 14,
+//   },
+//   userAvatar: {
+//     width: 36,
+//     height: 36,
+//     backgroundColor: '#4ade80',
+//     borderRadius: 18,
+//     justifyContent: 'center',
+//     alignItems: 'center',
+//   },
+//   userInitials: {
+//     color: 'white',
+//     fontWeight: '600',
+//     fontSize: 14,
+//   },
+//   scrollView: {
+//     flex: 1,
+//   },
+//   mainContent: {
+//     paddingHorizontal: 20,
+//     paddingBottom: 100,
+//   },
+//   pageTitle: {
+//     fontSize: 24,
+//     fontWeight: '600',
+//     color: 'white',
+//     marginBottom: 8,
+//   },
+//   pageSubtitle: {
+//     fontSize: 16,
+//     color: 'rgba(255, 255, 255, 0.7)',
+//     marginBottom: 30,
+//   },
+//   statsGrid: {
+//     flexDirection: 'row',
+//     gap: 15,
+//     marginBottom: 30,
+//   },
+//   statCard: {
+//     flex: 1,
+//     backgroundColor: 'rgba(255, 255, 255, 0.1)',
+//     borderRadius: 12,
+//     padding: 20,
+//     alignItems: 'center',
+//     borderWidth: 1,
+//     borderColor: 'rgba(255, 255, 255, 0.1)',
+//   },
+//   statNumber: {
+//     fontSize: 24,
+//     fontWeight: '700',
+//     color: '#4ade80',
+//     marginBottom: 4,
+//   },
+//   statLabel: {
+//     fontSize: 12,
+//     color: 'rgba(255, 255, 255, 0.7)',
+//   },
+//   sectionTitle: {
+//     fontSize: 18,
+//     fontWeight: '600',
+//     color: 'white',
+//     marginBottom: 20,
+//   },
+//   callRequest: {
+//     backgroundColor: 'white',
+//     borderRadius: 16,
+//     padding: 20,
+//     marginBottom: 16,
+//     shadowColor: '#000',
+//     shadowOffset: { width: 0, height: 4 },
+//     shadowOpacity: 0.1,
+//     shadowRadius: 20,
+//     elevation: 5,
+//   },
+//   callHeader: {
+//     flexDirection: 'row',
+//     alignItems: 'center',
+//     gap: 15,
+//     marginBottom: 15,
+//   },
+//   callerAvatar: {
+//     width: 50,
+//     height: 50,
+//     borderRadius: 25,
+//     justifyContent: 'center',
+//     alignItems: 'center',
+//   },
+//   callerInitials: {
+//     color: 'white',
+//     fontWeight: '600',
+//     fontSize: 18,
+//   },
+//   callerInfo: {
+//     flex: 1,
+//   },
+//   callerName: {
+//     fontSize: 16,
+//     fontWeight: '600',
+//     color: '#1f2937',
+//     marginBottom: 2,
+//   },
+//   phoneNumberContainer: {
+//     alignSelf: 'flex-start',
+//   },
+//   callerDetails: {
+//     fontSize: 14,
+//     color: '#6b7280',
+//     // textDecorationLine: 'underline',
+//   },
+//   callTimeContainer: {
+//     backgroundColor: '#f3f4f6',
+//     paddingHorizontal: 8,
+//     paddingVertical: 4,
+//     borderRadius: 6,
+//   },
+//   callTime: {
+//     fontSize: 12,
+//     color: '#9ca3af',
+//   },
+//   callInfo: {
+//     marginBottom: 20,
+//   },
+//   callTypeContainer: {
+//     alignSelf: 'flex-start',
+//     backgroundColor: '#dbeafe',
+//     paddingHorizontal: 12,
+//     paddingVertical: 4,
+//     borderRadius: 20,
+//     marginBottom: 8,
+//   },
+//   callType: {
+//     fontSize: 12,
+//     fontWeight: '500',
+//     color: '#1e40af',
+//   },
+//   callPurpose: {
+//     fontSize: 14,
+//     color: '#4b5563',
+//     lineHeight: 20,
+//   },
+//   callActions: {
+//     flexDirection: 'row',
+//     gap: 12,
+//   },
+//   btn: {
+//     flex: 1,
+//     paddingVertical: 12,
+//     borderRadius: 12,
+//     alignItems: 'center',
+//     flexDirection:'row',
+//     justifyContent:'center'
+//   },
+//   btnAccept: {
+//     backgroundColor: '#4ade80',
+
+//   },
+//   btnAcceptText: {
+//     color: 'white',
+//     fontSize: 14,
+//     fontWeight: '600',
+//     marginLeft: 8,
+//   },
+//   btnReject: {
+//     backgroundColor: 'red',
+//     borderWidth: 1,
+//     borderColor: 'red',
+//   },
+//   btnRejectText: {
+//     color: 'white',
+//     fontSize: 14,
+//     fontWeight: '600',
+//     marginLeft: 8,
+//   },
+//   processingContainer: {
+//     alignItems: 'center',
+//     padding: 20,
+//   },
+//   processingIcon: {
+//     fontSize: 24,
+//     marginBottom: 8,
+//   },
+//   processingTitle: {
+//     fontSize: 16,
+//     fontWeight: '600',
+//     marginBottom: 4,
+//     color: '#1f2937',
+//   },
+//   processingSubtitle: {
+//     fontSize: 14,
+//     color: '#6b7280',
+//   },
+//   emptyState: {
+//     alignItems: 'center',
+//     padding: 40,
+//   },
+//   emptyIcon: {
+//     fontSize: 48,
+//     marginBottom: 16,
+//     opacity: 0.5,
+//   },
+//   emptyTitle: {
+//     fontSize: 18,
+//     fontWeight: '600',
+//     marginBottom: 8,
+//     marginTop: 10,
+//     color: 'rgba(255, 255, 255, 0.8)',
+//   },
+//   emptySubtitle: {
+//     fontSize: 14,
+//     color: 'rgba(255, 255, 255, 0.6)',
+//     textAlign: 'center',
+//     lineHeight: 20,
+//   },
+//   bottomNav: {
+//     position: 'absolute',
+//     bottom: 0,
+//     left: 0,
+//     right: 0,
+//     backgroundColor: 'rgba(255, 255, 255, 0.1)',
+//     borderTopWidth: 1,
+//     borderTopColor: 'rgba(255, 255, 255, 0.1)',
+//     paddingVertical: 20,
+//     paddingHorizontal: 20,
+//   },
+//   navItems: {
+//     flexDirection: 'row',
+//     justifyContent: 'space-around',
+//   },
+//   navItem: {
+//     alignItems: 'center',
+//     padding: 8,
+//     borderRadius: 12,
+//     minWidth: 60,
+//     position: 'relative',
+//   },
+//   navItemActive: {
+//     backgroundColor: 'rgba(74, 222, 128, 0.2)',
+//   },
+//   navIcon: {
+//     fontSize: 20,
+//     marginBottom: 4,
+//   },
+//   navLabel: {
+//     fontSize: 12,
+//     fontWeight: '500',
+//     color: 'rgba(255, 255, 255, 0.6)',
+//   },
+//   navLabelActive: {
+//     color: '#4ade80',
+//   },
+//   notificationBadge: {
+//     position: 'absolute',
+//     top: -4,
+//     right: -4,
+//     backgroundColor: '#ef4444',
+//     borderRadius: 9,
+//     width: 18,
+//     height: 18,
+//     justifyContent: 'center',
+//     alignItems: 'center',
+//   },
+//   badgeText: {
+//     color: 'white',
+//     fontSize: 10,
+//     fontWeight: '600',
+//   },
+// });
+
+// export default CallDashboard;
+
+
+
+
+
+
+
+
+
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   Animated,
   Dimensions,
-  StatusBar,
   Linking,
   Alert,
   FlatList,
 } from 'react-native';
-// import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { ThemedView } from '@/components/ThemedView';
 import Header from '@/components/header';
-import { FontAwesome6,FontAwesome5,Ionicons } from '@expo/vector-icons';
+import { FontAwesome5 } from '@expo/vector-icons';
+import Pusher from 'pusher-js/react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from "@/context/AuthContext";
+import TextAvatar from "react-native-text-avatar";
 
 const { width } = Dimensions.get('window');
 
@@ -1383,62 +2198,227 @@ interface CallRequest {
   type: string;
   purpose: string;
   timeAgo: string;
-  isProcessing?: boolean;
-  processType?: 'accept' | 'reject';
+  status: 'pending' | 'accepted' | 'rejected';
+  timestamp: number;
+}
+
+interface CallStats {
+  pendingCalls: number;
+  totalCalls: number;
+  acceptedCalls: number;
+  rejectedCalls: number;
 }
 
 const CallDashboard: React.FC = () => {
-  const [callRequests, setCallRequests] = useState<CallRequest[]>([
-    {
-      id: '1',
-      name: 'Alice Miller',
-      phone: '+1 (555) 123-4567',
-      initials: 'AM',
-      type: 'Sales Inquiry',
-      purpose: 'Interested in premium package consultation and pricing details',
-      timeAgo: '2 min ago',
-    },
-    {
-      id: '2',
-      name: 'Robert Johnson',
-      phone: '+1 (555) 987-6543',
-      initials: 'RJ',
-      type: 'Support',
-      purpose: 'Technical support needed for account setup and configuration',
-      timeAgo: '5 min ago',
-    },
-    {
-      id: '3',
-      name: 'Sarah Davis',
-      phone: '+1 (555) 456-7890',
-      initials: 'SD',
-      type: 'Follow-up',
-      purpose: 'Follow-up call regarding previous meeting and next steps',
-      timeAgo: '8 min ago',
-    },
-  ]);
+  const { user } = useAuth();
+  const [connectionStatus, setConnectionStatus] = useState('disconnected');
+  const [subscriptionStatus, setSubscriptionStatus] = useState('not_subscribed');
+  const pusherRef = useRef<any>(null);
+  
+  // Main state for all call requests
+  const [allCallRequests, setAllCallRequests] = useState<CallRequest[]>([]);
+  
+  // Computed stats from the main state
+  const callStats: CallStats = React.useMemo(() => {
+    const pending = allCallRequests.filter(call => call.status === 'pending').length;
+    const accepted = allCallRequests.filter(call => call.status === 'accepted').length;
+    const rejected = allCallRequests.filter(call => call.status === 'rejected').length;
+    const total = accepted + rejected;
+    
+    return {
+      pendingCalls: pending,
+      totalCalls: total,
+      acceptedCalls: accepted,
+      rejectedCalls: rejected,
+    };
+  }, [allCallRequests]);
 
-  const [todayCalls] = useState(12);
-  const [activeTab, setActiveTab] = useState('dashboard');
+  // Only show pending calls in the list
+  const pendingCalls = allCallRequests.filter(call => call.status === 'pending');
+
+  // Load persisted data on component mount
+  useEffect(() => {
+    loadPersistedData();
+  }, []);
+
+  // Save data whenever it changes
+  useEffect(() => {
+    saveDataToPersistence();
+  }, [allCallRequests]);
+
+  const loadPersistedData = async () => {
+    try {
+      const storedCalls = await AsyncStorage.getItem(`callRequests_${user?.id}`);
+      if (storedCalls) {
+        const parsedCalls = JSON.parse(storedCalls);
+        setAllCallRequests(parsedCalls);
+        addDebugLog(`📱 Loaded ${parsedCalls.length} persisted calls`, 'info');
+      }
+    } catch (error) {
+      addDebugLog(`❌ Error loading persisted data: ${error.message}`, 'error');
+    }
+  };
+
+  const saveDataToPersistence = async () => {
+    try {
+      if (user?.id && allCallRequests.length >= 0) {
+        await AsyncStorage.setItem(
+          `callRequests_${user.id}`, 
+          JSON.stringify(allCallRequests)
+        );
+      }
+    } catch (error) {
+      addDebugLog(`❌ Error saving data: ${error.message}`, 'error');
+    }
+  };
+
+  // Debug logging function
+  const addDebugLog = (message: string, type = 'info') => {
+    const timestamp = new Date().toLocaleTimeString();
+    console.log(`[${timestamp}] ${message}`);
+  };
+
+  const connectToPusher = async () => {
+    try {
+      addDebugLog('🔄 Starting Pusher connection...', 'info');
+      
+      const token = await AsyncStorage.getItem('userToken');
+      const userId = user?.id;
+
+      if (!token || !userId) {
+        addDebugLog('❌ Missing token or user ID', 'error');
+        setConnectionStatus('error');
+        return;
+      }
+
+      addDebugLog(`👤 User ID: ${userId}`, 'info');
+
+      // Disconnect existing connection if any
+      if (pusherRef.current) {
+        pusherRef.current.disconnect();
+      }
+
+      const pusher = new Pusher('b71a5e925d7e4b40fad3', {
+        cluster: 'ap2',
+        authEndpoint: 'https://backend.skyleadcrm.io/broadcasting/auth',
+        auth: {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        },
+        enabledTransports: ['ws', 'wss'],
+        disabledTransports: ['xhr_polling', 'xhr_streaming'],
+      });
+
+      pusherRef.current = pusher;
+
+      // Connection event handlers
+      pusher.connection.bind('connected', () => {
+        addDebugLog('✅ Pusher connected successfully', 'success');
+        setConnectionStatus('connected');
+      });
+
+      pusher.connection.bind('connecting', () => {
+        addDebugLog('🔄 Pusher connecting...', 'info');
+        setConnectionStatus('connecting');
+      });
+
+      pusher.connection.bind('disconnected', () => {
+        addDebugLog('🔌 Pusher disconnected', 'warning');
+        setConnectionStatus('disconnected');
+      });
+
+      pusher.connection.bind('error', (err: any) => {
+        addDebugLog(`❌ Pusher connection error: ${JSON.stringify(err)}`, 'error');
+        setConnectionStatus('error');
+      });
+
+      pusher.connection.bind('state_change', (states: any) => {
+        addDebugLog(`🔄 State change: ${states.previous} → ${states.current}`, 'info');
+      });
+
+      // Subscribe to PRIVATE channel
+      const channelName = `private-trigercall.${userId}`;
+      addDebugLog(`📡 Subscribing to PRIVATE channel: ${channelName}`, 'info');
+      
+      const channel = pusher.subscribe(channelName);
+
+      channel.bind('pusher:subscription_succeeded', () => {
+        addDebugLog(`✅ Successfully subscribed to PRIVATE channel: ${channelName}`, 'success');
+        setSubscriptionStatus('subscribed');
+      });
+
+      channel.bind('pusher:subscription_error', (error: any) => {
+        addDebugLog(`❌ Subscription error: ${JSON.stringify(error)}`, 'error');
+        setSubscriptionStatus('error');
+      });
+
+      // Bind to custom event
+      channel.bind('App\\Events\\CallNotification', (data: any) => {
+        addDebugLog(`📞 Received call notification: ${JSON.stringify(data)}`, 'success');
+        
+        const newCallRequest: CallRequest = {
+          id: data.data.lead_id || Date.now().toString(),
+          name: data.data.lead?.client_name || data.data.lead?.lead_name || data.data.name || "Unknown Caller",
+          phone: data.data.phone || "No phone number",
+          initials: data.data.initials || data.data.name?.split(' ')?.map((n: string) => n[0]).join('') || "??",
+          type: data.data.type || 'Unknown',
+          purpose: data.data.purpose || 'No purpose provided',
+          timeAgo: data.data.lead?.last_assign_date || 'Just now',
+          status: 'pending',
+          timestamp: Date.now(),
+        };
+
+        setAllCallRequests(prev => {
+          // Check if call already exists to avoid duplicates
+          // const exists = prev.some(call => call.id === newCallRequest.id);
+          // if (exists) {
+          //   addDebugLog(`⚠️ Call ${newCallRequest.id} already exists, skipping`, 'warning');
+          //   return prev;
+          // }
+          return [newCallRequest, ...prev];
+        });
+      });
+
+      return pusher;
+    } catch (error: any) {
+      addDebugLog(`💥 Error in connectToPusher: ${error.message}`, 'error');
+      setConnectionStatus('error');
+    }
+  };
+
+  useEffect(() => {
+    connectToPusher();
+
+    // Cleanup on unmount
+    return () => {
+      if (pusherRef.current) {
+        addDebugLog('🧹 Cleaning up Pusher connection...', 'info');
+        pusherRef.current.disconnect();
+      }
+    };
+  }, [user?.id]);
 
   // Function to handle phone dialing
   const handlePhoneCall = async (phoneNumber: string) => {
     try {
-      // Clean the phone number (remove spaces, parentheses, and dashes)
       const cleanPhoneNumber = phoneNumber.replace(/[\s\(\)\-]/g, '');
       const phoneUrl = `tel:${cleanPhoneNumber}`;
       
-      // Check if the device can handle the tel: URL
       const supported = await Linking.canOpenURL(phoneUrl);
       
       if (supported) {
         await Linking.openURL(phoneUrl);
+        return true;
       } else {
         Alert.alert(
           'Phone Not Available',
           'Phone dialing is not available on this device',
           [{ text: 'OK' }]
         );
+        return false;
       }
     } catch (error) {
       console.error('Error opening phone dialer:', error);
@@ -1447,70 +2427,58 @@ const CallDashboard: React.FC = () => {
         'Failed to open phone dialer. Please try again.',
         [{ text: 'OK' }]
       );
+      return false;
     }
   };
 
-  const handleCallAction = async (id: string, action: 'accept' | 'reject') => {
-    if (action === 'accept') {
-      // Find the call request to get the phone number
-      const callRequest = callRequests.find(call => call.id === id);
+  const handleCallAction = async (id: string, action: 'accepted' | 'rejected') => {
+    addDebugLog(`🎬 Handling call action: ${action} for call ${id}`, 'info');
+    
+    if (action === 'accepted') {
+      const callRequest = allCallRequests.find(call => call.id === id);
       
       if (callRequest) {
-        // Open phone dialer
-        await handlePhoneCall(callRequest.phone);
+        const dialSuccess = await handlePhoneCall(callRequest.phone);
+        if (!dialSuccess) {
+          // If dialing failed, don't mark as accepted
+          return;
+        }
       }
     }
 
-    // Update the UI to show processing state
-    setCallRequests(prev =>
+    // Update the call status instead of removing it
+    setAllCallRequests(prev =>
       prev.map(call =>
         call.id === id
-          ? { ...call, isProcessing: true, processType: action }
+          ? { ...call, status: action, timeAgo: 'Just now' }
           : call
       )
     );
 
-    // Simulate processing delay and remove from list
-    setTimeout(() => {
-      setCallRequests(prev => prev.filter(call => call.id !== id));
-    }, 2000);
+    addDebugLog(`✅ Call ${id} marked as ${action}`, 'success');
   };
 
-  const addNewCallRequest = () => {
-    const names = ['Michael Brown', 'Emma Wilson', 'David Lee', 'Lisa Garcia'];
-    const phones = ['+1 (555) 111-2222', '+1 (555) 333-4444', '+1 (555) 555-6666', '+1 (555) 777-8888'];
-    const types = ['Sales Inquiry', 'Support', 'Follow-up', 'Consultation'];
-    const purposes = [
-      'Interested in enterprise solutions',
-      'Need help with account issues',
-      'Discussing project requirements',
-      'Requesting product demonstration'
-    ];
-    
-    const randomIndex = Math.floor(Math.random() * names.length);
-    const name = names[randomIndex];
-    const initials = name?.split(' ')?.map(n => n[0]).join('');
-    
-    const newRequest: CallRequest = {
-      id: Date.now().toString(),
-      name,
-      phone: phones[randomIndex],
-      initials,
-      type: types[randomIndex],
-      purpose: purposes[randomIndex],
-      timeAgo: 'Just now',
-    };
-    
-    setCallRequests(prev => [newRequest, ...prev]);
+  // Function to clear old processed calls (optional utility)
+  const clearProcessedCalls = () => {
+    Alert.alert(
+      'Clear History',
+      'Are you sure you want to clear all accepted and rejected calls?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear',
+          style: 'destructive',
+          onPress: () => {
+            setAllCallRequests(prev => prev.filter(call => call.status === 'pending'));
+            addDebugLog('🧹 Cleared processed calls', 'info');
+          }
+        }
+      ]
+    );
   };
-
-  useEffect(() => {
-    const interval = setInterval(addNewCallRequest, 30000);
-    return () => clearInterval(interval);
-  }, []);
 
   const CallRequestCard: React.FC<{ request: CallRequest }> = ({ request }) => {
-    const slideAnim = new Animated.Value(0);
+    const slideAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
       Animated.timing(slideAnim, {
@@ -1519,26 +2487,6 @@ const CallDashboard: React.FC = () => {
         useNativeDriver: true,
       }).start();
     }, []);
-
-    if (request.isProcessing) {
-      return (
-        <View style={styles.callRequest}>
-          <View style={styles.processingContainer}>
-            <Text style={styles.processingIcon}>
-              {request.processType === 'accept' ? '✅' : '❌'}
-            </Text>
-            <Text style={styles.processingTitle}>
-              {request.processType === 'accept' ? 'Call Accepted' : 'Call Declined'}
-            </Text>
-            <Text style={styles.processingSubtitle}>
-              {request.processType === 'accept' 
-                ? `Opening dialer for ${request.name}...` 
-                : `${request.name} has been notified`}
-            </Text>
-          </View>
-        </View>
-      );
-    }
 
     return (
       <Animated.View
@@ -1558,21 +2506,18 @@ const CallDashboard: React.FC = () => {
         ]}
       >
         <View style={styles.callHeader}>
-          {/* <LinearGradient
-            colors={['#4ade80', '#22c55e']}
-            style={styles.callerAvatar}
-          > */}
-            {/* <Text style={styles.callerInitials}>{request.initials}</Text> */}
-          {/* </LinearGradient> */}
+          <TextAvatar
+            backgroundColor="#4ade80"
+            textColor="#fff"
+            size={50}
+            type="circle"
+          >
+            {request.name || "User Name"}
+          </TextAvatar>
           
           <View style={styles.callerInfo}>
             <Text style={styles.callerName}>{request.name}</Text>
-            {/* <TouchableOpacity 
-              onPress={() => handlePhoneCall(request.phone)}
-              style={styles.phoneNumberContainer}
-            > */}
-              <Text style={styles.callerDetails}>{request.phone}</Text>
-            {/* </TouchableOpacity> */}
+            <Text style={styles.callerDetails}>{request.phone}</Text>
           </View>
           
           <View style={styles.callTimeContainer}>
@@ -1580,33 +2525,27 @@ const CallDashboard: React.FC = () => {
           </View>
         </View>
 
-        <View style={styles.callInfo}>
-          <View style={styles.callTypeContainer}>
-            <Text style={styles.callType}>{request.type}</Text>
+        {request.purpose && request.purpose !== 'No purpose provided' && (
+          <View style={styles.callInfo}>
+            <Text style={styles.callPurpose}>{request.purpose}</Text>
           </View>
-          <Text style={styles.callPurpose}>{request.purpose}</Text>
-        </View>
+        )}
 
         <View style={styles.callActions}>
           <TouchableOpacity
             style={[styles.btn, styles.btnAccept]}
-            onPress={() => handleCallAction(request.id, 'accept')}
+            onPress={() => handleCallAction(request.id, 'accepted')}
           >
-            <FontAwesome5 name="phone-alt" size={14} color="#fff" /> 
-            <Text style={styles.btnAcceptText}>
-              
-              Accept & Call
-              </Text>
+            <FontAwesome5 name="phone-alt" size={14} color="#fff" />
+            <Text style={styles.btnAcceptText}>Accept & Call</Text>
           </TouchableOpacity>
           
           <TouchableOpacity
             style={[styles.btn, styles.btnReject]}
-            onPress={() => handleCallAction(request.id, 'reject')}
+            onPress={() => handleCallAction(request.id, 'rejected')}
           >
-            <FontAwesome5 name="phone-slash" size={14} color="white" /> 
-            <Text style={styles.btnRejectText}>
-               Decline
-              </Text>
+            <FontAwesome5 name="phone-slash" size={14} color="white" />
+            <Text style={styles.btnRejectText}>Decline</Text>
           </TouchableOpacity>
         </View>
       </Animated.View>
@@ -1615,8 +2554,7 @@ const CallDashboard: React.FC = () => {
 
   const EmptyState: React.FC = () => (
     <View style={styles.emptyState}>
-     
-        <FontAwesome5 name="phone-alt" size={28} color="white" /> 
+      <FontAwesome5 name="phone-alt" size={28} color="white" />
       <Text style={styles.emptyTitle}>No Pending Calls</Text>
       <Text style={styles.emptySubtitle}>All caught up! New call requests will appear here.</Text>
     </View>
@@ -1631,46 +2569,59 @@ const CallDashboard: React.FC = () => {
       <Text style={styles.pageTitle}>Call Dashboard</Text>
       <Text style={styles.pageSubtitle}>Manage incoming call requests</Text>
 
-      {/* Stats */}
+      {/* Stats - Keep original design */}
       <View style={styles.statsGrid}>
         <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{callRequests.length}</Text>
+          <Text style={styles.statNumber}>{callStats.pendingCalls}</Text>
           <Text style={styles.statLabel}>Pending Calls</Text>
         </View>
         
         <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{todayCalls}</Text>
+          <Text style={styles.statNumber}>{callStats.totalCalls}</Text>
           <Text style={styles.statLabel}>Today's Calls</Text>
         </View>
+      </View>
+
+      {/* Connection Status Indicator */}
+
+      <View style={styles.statusContainer}>
+        <View style={[
+          styles.statusIndicator, 
+          
+          { backgroundColor: connectionStatus === 'connected' ? '#4ade80' : '#ef4444' }
+        ]} />
+        <Text style={styles.statusText}>
+          {connectionStatus === 'connected' ? 'Connected' : 'Disconnected'}
+        </Text>
+        
+        {/* {callStats.totalCalls > 0 && (
+          <TouchableOpacity onPress={clearProcessedCalls} style={styles.clearButton}>
+            <Text style={styles.clearButtonText}>Clear History</Text>
+          </TouchableOpacity>
+        )} */}
       </View>
 
       <Text style={styles.sectionTitle}>Incoming Requests</Text>
     </View>
   );
 
-  const renderListEmpty = () => <EmptyState />;
-
   return (
     <ThemedView style={styles.container}>
       <Header />
 
       <FlatList
-        data={callRequests}
+        data={pendingCalls}
         renderItem={renderCallRequest}
         keyExtractor={(item) => item.id}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.flatListContainer}
         ListHeaderComponent={renderListHeader}
-        ListEmptyComponent={renderListEmpty}
+        ListEmptyComponent={<EmptyState />}
         ItemSeparatorComponent={() => <View style={styles.itemSeparator} />}
-        // Optional: Add performance optimizations
         removeClippedSubviews={true}
         maxToRenderPerBatch={10}
         windowSize={10}
         initialNumToRender={10}
-        getItemLayout={(data, index) => (
-          {length: 200, offset: 200 * index, index} // Approximate item height
-        )}
       />
     </ThemedView>
   );
@@ -1686,66 +2637,7 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   itemSeparator: {
-    height: 0, // No separator needed as cards have their own margin
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingBottom: 30,
-  },
-  logo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  logoIcon: {
-    width: 24,
-    height: 24,
-    backgroundColor: '#4ade80',
-    borderRadius: 4,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  logoIconText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  logoText: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  userInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  userName: {
-    color: 'rgba(255, 255, 255, 0.9)',
-    fontSize: 14,
-  },
-  userAvatar: {
-    width: 36,
-    height: 36,
-    backgroundColor: '#4ade80',
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  userInitials: {
-    color: 'white',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  mainContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 100,
+    height: 0,
   },
   pageTitle: {
     fontSize: 24,
@@ -1761,7 +2653,7 @@ const styles = StyleSheet.create({
   statsGrid: {
     flexDirection: 'row',
     gap: 15,
-    marginBottom: 30,
+    marginBottom: 20,
   },
   statCard: {
     flex: 1,
@@ -1781,6 +2673,35 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 12,
     color: 'rgba(255, 255, 255, 0.7)',
+  },
+  statusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    gap: 8,
+  },
+  statusIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  statusText: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.7)',
+    flex: 1,
+  },
+  clearButton: {
+    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+  },
+  clearButtonText: {
+    color: '#ef4444',
+    fontSize: 12,
+    fontWeight: '500',
   },
   sectionTitle: {
     fontSize: 18,
@@ -1805,18 +2726,6 @@ const styles = StyleSheet.create({
     gap: 15,
     marginBottom: 15,
   },
-  callerAvatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  callerInitials: {
-    color: 'white',
-    fontWeight: '600',
-    fontSize: 18,
-  },
   callerInfo: {
     flex: 1,
   },
@@ -1826,13 +2735,9 @@ const styles = StyleSheet.create({
     color: '#1f2937',
     marginBottom: 2,
   },
-  phoneNumberContainer: {
-    alignSelf: 'flex-start',
-  },
   callerDetails: {
     fontSize: 14,
     color: '#6b7280',
-    // textDecorationLine: 'underline',
   },
   callTimeContainer: {
     backgroundColor: '#f3f4f6',
@@ -1846,19 +2751,6 @@ const styles = StyleSheet.create({
   },
   callInfo: {
     marginBottom: 20,
-  },
-  callTypeContainer: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#dbeafe',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 20,
-    marginBottom: 8,
-  },
-  callType: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#1e40af',
   },
   callPurpose: {
     fontSize: 14,
@@ -1874,12 +2766,11 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 12,
     alignItems: 'center',
-    flexDirection:'row',
-    justifyContent:'center'
+    flexDirection: 'row',
+    justifyContent: 'center',
   },
   btnAccept: {
     backgroundColor: '#4ade80',
-
   },
   btnAcceptText: {
     color: 'white',
@@ -1888,9 +2779,9 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   btnReject: {
-    backgroundColor: 'red',
+    backgroundColor: '#ef4444',
     borderWidth: 1,
-    borderColor: 'red',
+    borderColor: '#ef4444',
   },
   btnRejectText: {
     color: 'white',
@@ -1898,32 +2789,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: 8,
   },
-  processingContainer: {
-    alignItems: 'center',
-    padding: 20,
-  },
-  processingIcon: {
-    fontSize: 24,
-    marginBottom: 8,
-  },
-  processingTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-    color: '#1f2937',
-  },
-  processingSubtitle: {
-    fontSize: 14,
-    color: '#6b7280',
-  },
   emptyState: {
     alignItems: 'center',
     padding: 40,
-  },
-  emptyIcon: {
-    fontSize: 48,
-    marginBottom: 16,
-    opacity: 0.5,
   },
   emptyTitle: {
     fontSize: 18,
@@ -1938,61 +2806,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
   },
-  bottomNav: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
-    paddingVertical: 20,
-    paddingHorizontal: 20,
-  },
-  navItems: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  navItem: {
-    alignItems: 'center',
-    padding: 8,
-    borderRadius: 12,
-    minWidth: 60,
-    position: 'relative',
-  },
-  navItemActive: {
-    backgroundColor: 'rgba(74, 222, 128, 0.2)',
-  },
-  navIcon: {
-    fontSize: 20,
-    marginBottom: 4,
-  },
-  navLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: 'rgba(255, 255, 255, 0.6)',
-  },
-  navLabelActive: {
-    color: '#4ade80',
-  },
-  notificationBadge: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    backgroundColor: '#ef4444',
-    borderRadius: 9,
-    width: 18,
-    height: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  badgeText: {
-    color: 'white',
-    fontSize: 10,
-    fontWeight: '600',
-  },
 });
 
 export default CallDashboard;
-
-
