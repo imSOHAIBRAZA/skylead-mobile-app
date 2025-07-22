@@ -2355,6 +2355,702 @@
 
 
 
+// import React, { useState, useEffect, useCallback, useMemo } from "react";
+// import {
+//   View,
+//   Text,
+//   StyleSheet,
+//   ScrollView,
+//   TouchableOpacity,
+//   TextInput,
+//   Animated,
+//   Dimensions,
+//   StatusBar,
+//   Alert,
+//   Linking,
+//   FlatList,
+//   RefreshControl,
+// } from "react-native";
+// import { BlurView } from "expo-blur";
+// import { ThemedView } from "@/components/ThemedView";
+// import Header from "@/components/header";
+// import { useGet } from "@/hooks/useApi";
+
+// import { FontAwesome6, FontAwesome5, Ionicons } from "@expo/vector-icons";
+// import {
+//   CallHistoryItem,
+//   CallHistoryApiResponse,
+//   transformCallHistoryData,
+// } from "@/components/callHistoryTypes";
+
+// const { width } = Dimensions.get("window");
+
+// const CallHistory: React.FC = () => {
+//   // API hook for fetching call history
+//   const {
+//     data: apiData,
+//     loading,
+//     error,
+//     get: fetchCallHistory,
+//   } = useGet("/call-history");
+  
+//   const [callHistory, setCallHistory] = useState<CallHistoryItem[]>([]);
+//   const [filteredHistory, setFilteredHistory] = useState<CallHistoryItem[]>([]);
+//   const [activeFilter, setActiveFilter] = useState<
+//     "all" | "accepted" | "rejected" | "missed"
+//   >("all");
+//   const [searchQuery, setSearchQuery] = useState("");
+//   const [refreshing, setRefreshing] = useState(false);
+//   const [stats, setStats] = useState({
+//     total: 0,
+//     accepted: 0,
+//     avgDuration: "0m",
+//   });
+
+//   const updateStats = (calls: CallHistoryItem[]) => {
+//     const total = calls.length;
+//     const accepted = calls.filter((call) => call.status === "accepted").length;
+
+//     // Calculate average duration (only for accepted calls with valid duration)
+//     const acceptedCallsWithDuration = calls.filter(
+//       (call) => call.status === "accepted" && call.duration !== "-"
+//     );
+
+//     let avgDuration = "0m";
+//     if (acceptedCallsWithDuration.length > 0) {
+//       const totalMinutes = acceptedCallsWithDuration.reduce((sum, call) => {
+//         const duration = call.duration.replace(/[^\d]/g, "");
+//         return sum + (parseInt(duration) || 0);
+//       }, 0);
+//       avgDuration = `${Math.round(
+//         totalMinutes / acceptedCallsWithDuration.length
+//       )}m`;
+//     }
+
+//     setStats({ total, accepted, avgDuration });
+//   };
+
+//   const loadCallHistory = useCallback(async () => {
+//     try {
+//       await fetchCallHistory();
+//     } catch (error) {
+//       console.error("Failed to load call history:", error);
+//       Alert.alert(
+//         "Error",
+//         "Failed to load call history. Please check your connection and try again.",
+//         [{ text: "OK" }]
+//       );
+//     }
+//   }, [fetchCallHistory]);
+
+//   const onRefresh = useCallback(async () => {
+//     setRefreshing(true);
+//     await loadCallHistory();
+//     setRefreshing(false);
+//   }, [loadCallHistory]);
+
+//   // Load call history on component mount
+//   useEffect(() => {
+//     loadCallHistory();
+//   }, []);
+
+//   // Transform API data when received
+//   useEffect(() => {
+//     if (apiData?.calls) {
+//       const transformedData = transformCallHistoryData(apiData.calls);
+//       console.log("API Data:+++>", transformedData);
+//       setCallHistory(transformedData);
+//       updateStats(transformedData);
+//     }
+//   }, [apiData]);
+
+//   // Filter calls when filters change - using useMemo for better performance
+//   const memoizedFilteredHistory = useMemo(() => {
+//     let filtered = callHistory;
+
+//     // Apply status filter
+//     if (activeFilter !== "all") {
+//       filtered = filtered.filter((call) => call.status === activeFilter);
+//     }
+
+//     // Apply search filter
+//     if (searchQuery) {
+//       filtered = filtered.filter(
+//         (call) =>
+//           call?.name?.toLowerCase()?.includes(searchQuery?.toLowerCase()) ||
+//           call.phone?.includes(searchQuery)
+//       );
+//     }
+
+//     return filtered;
+//   }, [activeFilter, searchQuery, callHistory]);
+
+//   useEffect(() => {
+//     setFilteredHistory(memoizedFilteredHistory);
+//   }, [memoizedFilteredHistory]);
+
+//   // Function to handle phone dialing
+//   const handlePhoneCall = async (phoneNumber: string) => {
+//     try {
+//       const cleanPhoneNumber = phoneNumber.replace(/[\s\(\)\-]/g, "");
+//       const phoneUrl = `tel:${cleanPhoneNumber}`;
+//       const supported = await Linking.canOpenURL(phoneUrl);
+
+//       if (supported) {
+//         await Linking.openURL(phoneUrl);
+//       } else {
+//         Alert.alert(
+//           "Phone Not Available",
+//           "Phone dialing is not available on this device",
+//           [{ text: "OK" }]
+//         );
+//       }
+//     } catch (error) {
+//       console.error("Error opening phone dialer:", error);
+//       Alert.alert("Error", "Failed to open phone dialer. Please try again.", [
+//         { text: "OK" },
+//       ]);
+//     }
+//   };
+
+//   const handleCallBack = async (phoneNumber: string) => {
+//     Alert.alert("Call Back", `Would you like to call ${phoneNumber}?`, [
+//       { text: "Cancel", style: "cancel" },
+//       {
+//         text: "Call",
+//         onPress: () => handlePhoneCall(phoneNumber),
+//       },
+//     ]);
+//   };
+
+//   const handleShowDetails = (call: CallHistoryItem) => {
+//     Alert.alert(
+//       "Call Details",
+//       `Details for ${call.name}\n\n• Lead ID: ${call.leadId}\n• Agent: ${call.agentName}\n• Status: ${call.status}\n• Call Type: ${call.type}\n• Duration: ${call.duration}\n• Phone: ${call.phone}`,
+//       [{ text: "OK" }]
+//     );
+//   };
+
+//   const getStatusStyle = (status: string) => {
+//     switch (status) {
+//       case "accepted":
+//         return { backgroundColor: "#dcfce7", color: "#166534" };
+//       case "rejected":
+//         return { backgroundColor: "#fee2e2", color: "#991b1b" };
+//       case "missed":
+//         return { backgroundColor: "#fef3c7", color: "#92400e" };
+//       default:
+//         return { backgroundColor: "#f3f4f6", color: "#6b7280" };
+//     }
+//   };
+
+//   const FilterTab: React.FC<{
+//     title: string;
+//     filter: "all" | "accepted" | "rejected" | "missed";
+//     isActive: boolean;
+//     onPress: () => void;
+//   }> = React.memo(({ title, filter, isActive, onPress }) => (
+//     <TouchableOpacity
+//       style={[styles.filterTab, isActive && styles.filterTabActive]}
+//       onPress={onPress}
+//     >
+//       <Text
+//         style={[styles.filterTabText, isActive && styles.filterTabTextActive]}
+//       >
+//         {title}
+//       </Text>
+//     </TouchableOpacity>
+//   ));
+
+//   // Create a simple card without animations to avoid issues
+//   const CallHistoryCard: React.FC<{ item: CallHistoryItem }> = React.memo(({ item }) => {
+//     const statusStyle = getStatusStyle(item.status);
+
+//     return (
+//       <View style={styles.historyItem}>
+//         <View style={styles.historyHeader}>
+//           <View style={styles.callerAvatar}>
+//             <Text style={styles.callerInitials}>{item.initials}</Text>
+//           </View>
+
+//           <View style={styles.callerInfo}>
+//             <Text style={styles.callerName}>{item.name}</Text>
+//             <Text style={styles.callerPhone}>{item.phone}</Text>
+//           </View>
+
+//           <View style={styles.callStatus}>
+//             <View style={[styles.statusBadge, statusStyle]}>
+//               <Text style={[styles.statusText, { color: statusStyle.color }]}>
+//                 {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+//               </Text>
+//             </View>
+//             <Text style={styles.callTime}>{item.time}</Text>
+//           </View>
+//         </View>
+
+//         <View style={styles.callDetails}>
+//           <View style={styles.callTypeContainer}>
+//             <Text style={styles.callType}>{item.type}</Text>
+//           </View>
+//           <Text style={styles.callDuration}>{item.duration}</Text>
+//         </View>
+
+//         <View style={styles.callActions}>
+//           <TouchableOpacity
+//             style={[styles.actionBtn, styles.btnCallback]}
+//             onPress={() => handlePhoneCall(item.phone)}
+//           >
+//             <FontAwesome5 name="phone-alt" size={14} color="#fff" />
+//             <Text style={styles.btnCallbackText}> Call Back</Text>
+//           </TouchableOpacity>
+
+//           <TouchableOpacity
+//             style={[styles.actionBtn, styles.btnDetails]}
+//             onPress={() => handleShowDetails(item)}
+//           >
+//             <FontAwesome5 name="list" size={14} color="#6b7280" />
+//             <Text style={styles.btnDetailsText}>Details</Text>
+//           </TouchableOpacity>
+//         </View>
+//       </View>
+//     );
+//   });
+
+//   const LoadingState: React.FC = () => (
+//     <View style={styles.loadingState}>
+//       <Text style={styles.loadingText}>Loading calls...</Text>
+//     </View>
+//   );
+
+//   const EmptyState = () => {
+//     if (loading) {
+//       return <LoadingState />;
+//     }
+
+//     return (
+//       <View style={styles.emptyState}>
+//         <FontAwesome5 name="phone-alt" size={28} color="white" />
+//         <Text style={styles.emptyTitle}>
+//           No {activeFilter === "all" ? "" : activeFilter} calls found
+//         </Text>
+//         <Text style={styles.emptySubtitle}>
+//           Your call history will appear here once you start receiving calls.
+//         </Text>
+//       </View>
+//     );
+//   };
+
+//   const renderCallHistoryItem = ({ item }: { item: CallHistoryItem }) => (
+//     <CallHistoryCard item={item} />
+//   );
+
+//   const renderListHeader = () => (
+//     <View style={styles.listHeader}>
+//       <Text style={styles.pageTitle}>Call History</Text>
+//       <Text style={styles.pageSubtitle}>Review your call activity</Text>
+
+//       {/* Search */}
+//       <View style={styles.searchContainer}>
+//         <Text style={styles.searchIcon}>
+//           <Ionicons
+//             name="search"
+//             color={"rgba(255, 255, 255, 0.5)"}
+//             size={20}
+//           />
+//         </Text>
+//         <TextInput
+//           style={styles.searchInput}
+//           placeholder="Search calls..."
+//           placeholderTextColor="rgba(255, 255, 255, 0.5)"
+//           value={searchQuery}
+//           onChangeText={setSearchQuery}
+//         />
+//       </View>
+
+//       {/* Filter Tabs */}
+//       <View style={styles.filterTabs}>
+//         <FilterTab
+//           title="All"
+//           filter="all"
+//           isActive={activeFilter === "all"}
+//           onPress={() => setActiveFilter("all")}
+//         />
+//         <FilterTab
+//           title="Accepted"
+//           filter="accepted"
+//           isActive={activeFilter === "accepted"}
+//           onPress={() => setActiveFilter("accepted")}
+//         />
+//         <FilterTab
+//           title="Rejected"
+//           filter="rejected"
+//           isActive={activeFilter === "rejected"}
+//           onPress={() => setActiveFilter("rejected")}
+//         />
+//         <FilterTab
+//           title="Missed"
+//           filter="missed"
+//           isActive={activeFilter === "missed"}
+//           onPress={() => setActiveFilter("missed")}
+//         />
+//       </View>
+
+//       {/* Stats Summary */}
+//       <View style={styles.statsGrid}>
+//         <View style={styles.statCard}>
+//           <Text style={styles.statNumber}>{stats.total}</Text>
+//           <Text style={styles.statLabel}>Total Calls</Text>
+//         </View>
+
+//         <View style={styles.statCard}>
+//           <Text style={styles.statNumber}>{stats.accepted}</Text>
+//           <Text style={styles.statLabel}>Accepted</Text>
+//         </View>
+
+//         <View style={styles.statCard}>
+//           <Text style={styles.statNumber}>{stats.avgDuration}</Text>
+//           <Text style={styles.statLabel}>Avg Duration</Text>
+//         </View>
+//       </View>
+//     </View>
+//   );
+
+//   return (
+//     <ThemedView style={styles.container}>
+//       <Header />
+
+//       <FlatList
+//         data={filteredHistory}
+//         renderItem={renderCallHistoryItem}
+//         keyExtractor={(item) => item.id}
+//         ListHeaderComponent={renderListHeader}
+//         ListEmptyComponent={EmptyState}
+//         refreshControl={
+//           <RefreshControl
+//             refreshing={refreshing}
+//             onRefresh={onRefresh}
+//             tintColor="rgba(255, 255, 255, 0.8)"
+//             titleColor="rgba(255, 255, 255, 0.8)"
+//           />
+//         }
+//         contentContainerStyle={[
+//           styles.flatListContainer,
+//           filteredHistory.length === 0 && styles.flatListEmptyContainer,
+//         ]}
+//         showsVerticalScrollIndicator={false}
+//         // Removed problematic performance optimizations
+//         removeClippedSubviews={true}
+//         initialNumToRender={10}
+//         maxToRenderPerBatch={5}
+//         windowSize={10}
+//         updateCellsBatchingPeriod={50}
+//         // Removed getItemLayout since item heights vary
+//         // getItemLayout is only recommended when you have fixed height items
+//       />
+//     </ThemedView>
+//   );
+// };
+
+// export default CallHistory;
+
+// const styles = StyleSheet.create({
+//   container: {
+//     flex: 1,
+//     paddingTop: 50,
+//   },
+//   flatListContainer: {
+//     paddingHorizontal: 20,
+//     paddingBottom: 100,
+//   },
+//   flatListEmptyContainer: {
+//     flexGrow: 1,
+//   },
+//   listHeader: {
+//     marginBottom: 20,
+//   },
+//   pageTitle: {
+//     fontSize: 24,
+//     fontWeight: "600",
+//     color: "white",
+//     marginBottom: 8,
+//   },
+//   pageSubtitle: {
+//     fontSize: 16,
+//     color: "rgba(255, 255, 255, 0.7)",
+//     marginBottom: 30,
+//   },
+//   searchContainer: {
+//     position: "relative",
+//     marginBottom: 20,
+//   },
+//   searchIcon: {
+//     position: "absolute",
+//     left: 12,
+//     top: 12,
+//     fontSize: 16,
+//     color: "rgba(255, 255, 255, 0.5)",
+//     zIndex: 1,
+//   },
+//   searchInput: {
+//     backgroundColor: "rgba(255, 255, 255, 0.1)",
+//     borderRadius: 12,
+//     paddingHorizontal: 40,
+//     paddingVertical: 12,
+//     color: "white",
+//     fontSize: 14,
+//     borderWidth: 1,
+//     borderColor: "rgba(255, 255, 255, 0.1)",
+//   },
+//   filterTabs: {
+//     flexDirection: "row",
+//     backgroundColor: "rgba(255, 255, 255, 0.1)",
+//     borderRadius: 12,
+//     padding: 4,
+//     marginBottom: 30,
+//     borderWidth: 1,
+//     borderColor: "rgba(255, 255, 255, 0.1)",
+//   },
+//   filterTab: {
+//     flex: 1,
+//     paddingVertical: 10,
+//     alignItems: "center",
+//     borderRadius: 8,
+//   },
+//   filterTabActive: {
+//     backgroundColor: "#4ade80",
+//   },
+//   filterTabText: {
+//     fontSize: 14,
+//     fontWeight: "500",
+//     color: "rgba(255, 255, 255, 0.7)",
+//   },
+//   filterTabTextActive: {
+//     color: "white",
+//   },
+//   statsGrid: {
+//     flexDirection: "row",
+//     gap: 12,
+//     marginBottom: 30,
+//   },
+//   statCard: {
+//     flex: 1,
+//     backgroundColor: "rgba(255, 255, 255, 0.1)",
+//     borderRadius: 12,
+//     padding: 16,
+//     alignItems: "center",
+//     borderWidth: 1,
+//     borderColor: "rgba(255, 255, 255, 0.1)",
+//   },
+//   statNumber: {
+//     fontSize: 20,
+//     fontWeight: "700",
+//     color: "#4ade80",
+//     marginBottom: 4,
+//   },
+//   statLabel: {
+//     fontSize: 11,
+//     color: "rgba(255, 255, 255, 0.7)",
+//   },
+//   historyItem: {
+//     backgroundColor: "white",
+//     borderRadius: 16,
+//     padding: 20,
+//     marginBottom: 12,
+//     shadowColor: "#000",
+//     shadowOffset: { width: 0, height: 4 },
+//     shadowOpacity: 0.1,
+//     shadowRadius: 20,
+//     elevation: 5,
+//   },
+//   historyHeader: {
+//     flexDirection: "row",
+//     alignItems: "center",
+//     gap: 15,
+//     marginBottom: 12,
+//   },
+//   callerAvatar: {
+//     width: 45,
+//     height: 45,
+//     backgroundColor: "#4ade80",
+//     borderRadius: 22.5,
+//     justifyContent: "center",
+//     alignItems: "center",
+//   },
+//   callerInitials: {
+//     color: "white",
+//     fontWeight: "600",
+//     fontSize: 16,
+//   },
+//   callerInfo: {
+//     flex: 1,
+//   },
+//   callerName: {
+//     fontSize: 16,
+//     fontWeight: "600",
+//     color: "#1f2937",
+//     marginBottom: 2,
+//   },
+//   callerPhone: {
+//     fontSize: 13,
+//     color: "#6b7280",
+//     marginBottom: 2,
+//   },
+//   agentName: {
+//     fontSize: 12,
+//     color: "#9ca3af",
+//     fontStyle: "italic",
+//   },
+//   callStatus: {
+//     alignItems: "flex-end",
+//     gap: 4,
+//   },
+//   statusBadge: {
+//     paddingHorizontal: 10,
+//     paddingVertical: 4,
+//     borderRadius: 12,
+//   },
+//   statusText: {
+//     fontSize: 11,
+//     fontWeight: "600",
+//   },
+//   callTime: {
+//     fontSize: 12,
+//     color: "#9ca3af",
+//   },
+//   callDetails: {
+//     flexDirection: "row",
+//     justifyContent: "space-between",
+//     alignItems: "center",
+//     marginTop: 12,
+//     paddingTop: 12,
+//     borderTopWidth: 1,
+//     borderTopColor: "#f3f4f6",
+//     marginBottom: 12,
+//   },
+//   callTypeContainer: {
+//     backgroundColor: "#dbeafe",
+//     paddingHorizontal: 10,
+//     paddingVertical: 4,
+//     borderRadius: 12,
+//   },
+//   callType: {
+//     fontSize: 11,
+//     fontWeight: "500",
+//     color: "#1e40af",
+//   },
+//   callDuration: {
+//     fontSize: 12,
+//     color: "#6b7280",
+//     fontWeight: "500",
+//   },
+//   callActions: {
+//     flexDirection: "row",
+//     gap: 8,
+//   },
+//   actionBtn: {
+//     paddingHorizontal: 12,
+//     paddingVertical: 12,
+//     borderRadius: 12,
+//     flex: 1,
+//     alignItems: "center",
+//     flexDirection: "row",
+//     justifyContent: "center",
+//   },
+//   btnCallback: {
+//     backgroundColor: "#4ade80",
+//   },
+//   btnCallbackText: {
+//     color: "white",
+//     fontSize: 12,
+//     fontWeight: "500",
+//     marginLeft: 8,
+//   },
+//   btnDetails: {
+//     backgroundColor: "#f3f4f6",
+//   },
+//   btnDetailsText: {
+//     color: "#6b7280",
+//     fontSize: 12,
+//     fontWeight: "500",
+//     marginLeft: 8,
+//   },
+//   emptyState: {
+//     alignItems: "center",
+//     padding: 40,
+//   },
+//   emptyIcon: {
+//     fontSize: 48,
+//     marginBottom: 16,
+//     opacity: 0.5,
+//   },
+//   emptyTitle: {
+//     fontSize: 18,
+//     fontWeight: "600",
+//     marginBottom: 8,
+//     color: "rgba(255, 255, 255, 0.8)",
+//     marginTop: 10,
+//   },
+//   emptySubtitle: {
+//     fontSize: 14,
+//     color: "rgba(255, 255, 255, 0.6)",
+//     textAlign: "center",
+//     lineHeight: 20,
+//   },
+//   bottomNav: {
+//     backgroundColor: "rgba(255, 255, 255, 0.1)",
+//     borderTopWidth: 1,
+//     borderTopColor: "rgba(255, 255, 255, 0.1)",
+//     paddingVertical: 20,
+//     paddingHorizontal: 20,
+//   },
+//   navItems: {
+//     flexDirection: "row",
+//     justifyContent: "space-around",
+//   },
+//   navItem: {
+//     alignItems: "center",
+//     padding: 8,
+//     borderRadius: 12,
+//     minWidth: 60,
+//   },
+//   navItemActive: {
+//     backgroundColor: "rgba(74, 222, 128, 0.2)",
+//   },
+//   navIcon: {
+//     fontSize: 20,
+//     marginBottom: 4,
+//   },
+//   navLabel: {
+//     fontSize: 12,
+//     fontWeight: "500",
+//     color: "rgba(255, 255, 255, 0.6)",
+//   },
+//   navLabelActive: {
+//     color: "#4ade80",
+//   },
+//   retryButton: {
+//     backgroundColor: "#4ade80",
+//     paddingHorizontal: 20,
+//     paddingVertical: 10,
+//     borderRadius: 8,
+//     marginTop: 10,
+//   },
+//   retryButtonText: {
+//     color: "white",
+//     fontSize: 14,
+//     fontWeight: "500",
+//   },
+//   loadingState: {
+//     alignItems: "center",
+//     padding: 40,
+//   },
+//   loadingText: {
+//     fontSize: 16,
+//     color: "rgba(255, 255, 255, 0.8)",
+//   },
+// });
+
+
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
@@ -2370,6 +3066,7 @@ import {
   Linking,
   FlatList,
   RefreshControl,
+  Modal,
 } from "react-native";
 import { BlurView } from "expo-blur";
 import { ThemedView } from "@/components/ThemedView";
@@ -2406,6 +3103,10 @@ const CallHistory: React.FC = () => {
     accepted: 0,
     avgDuration: "0m",
   });
+
+  // Modal state
+  const [selectedCall, setSelectedCall] = useState<CallHistoryItem | null>(null);
+  const [isModalVisible, setIsModalVisible] = useState(false);
 
   const updateStats = (calls: CallHistoryItem[]) => {
     const total = calls.length;
@@ -2524,11 +3225,13 @@ const CallHistory: React.FC = () => {
   };
 
   const handleShowDetails = (call: CallHistoryItem) => {
-    Alert.alert(
-      "Call Details",
-      `Details for ${call.name}\n\n• Lead ID: ${call.leadId}\n• Agent: ${call.agentName}\n• Status: ${call.status}\n• Call Type: ${call.type}\n• Duration: ${call.duration}\n• Phone: ${call.phone}`,
-      [{ text: "OK" }]
-    );
+    setSelectedCall(call);
+    setIsModalVisible(true);
+  };
+
+  const closeModal = () => {
+    setIsModalVisible(false);
+    setTimeout(() => setSelectedCall(null), 300);
   };
 
   const getStatusStyle = (status: string) => {
@@ -2542,6 +3245,158 @@ const CallHistory: React.FC = () => {
       default:
         return { backgroundColor: "#f3f4f6", color: "#6b7280" };
     }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "accepted":
+        return <FontAwesome5 name="check-circle" size={20} color="#22c55e" />;
+      case "rejected":
+        return <FontAwesome5 name="times-circle" size={20} color="#ef4444" />;
+      case "missed":
+        return <FontAwesome5 name="exclamation-circle" size={20} color="#f59e0b" />;
+      default:
+        return <FontAwesome5 name="phone" size={20} color="#6b7280" />;
+    }
+  };
+
+  // Call Details Modal Component
+  const CallDetailsModal: React.FC = () => {
+    if (!selectedCall) return null;
+  
+    const statusStyle = getStatusStyle(selectedCall.status);
+  
+    return (
+      <Modal
+        visible={isModalVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={closeModal}
+      >
+        <View style={styles.modalOverlay}>
+          <BlurView intensity={20} tint="dark" style={styles.modalBlur}>
+            <TouchableOpacity 
+              style={styles.modalBackdrop} 
+              activeOpacity={1} 
+              onPress={closeModal}
+            />
+            
+            <View style={styles.modalContainer}>
+              {/* Modal Header */}
+              <View style={styles.modalHeader}>
+                <View style={styles.modalHeaderContent}>
+                  <View style={styles.modalCallerAvatar}>
+                    <Text style={styles.modalCallerInitials}>
+                      {selectedCall.initials}
+                    </Text>
+                  </View>
+                  
+                  <View style={styles.modalHeaderInfo}>
+                    <Text style={styles.modalCallerName}>
+                      {selectedCall.name}
+                    </Text>
+                    <Text style={styles.modalCallerPhone}>
+                      {selectedCall.phone}
+                    </Text>
+                  </View>
+  
+                  <TouchableOpacity 
+                    style={styles.modalCloseBtn}
+                    onPress={closeModal}
+                  >
+                    <Ionicons name="close" size={24} color="#6b7280" />
+                  </TouchableOpacity>
+                </View>
+  
+                {/* Status Badge */}
+                <View style={styles.modalStatusContainer}>
+                  <View style={[styles.modalStatusBadge, statusStyle]}>
+                    {getStatusIcon(selectedCall.status)}
+                    <Text style={[styles.modalStatusText, { color: statusStyle.color }]}>
+                      {selectedCall.status.charAt(0).toUpperCase() + selectedCall.status.slice(1)}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+  
+              {/* Modal Content */}
+              <View style={styles.modalContent} >
+                {/* Call Details Section */}
+                <View style={styles.modalSection}>
+                  <Text style={styles.modalSectionTitle}>Call Details</Text>
+                  
+                  <View style={styles.modalDetailRow}>
+                    <Text style={styles.modalDetailLabel}>Lead ID:</Text>
+                    <Text style={styles.modalDetailValue}>{selectedCall.leadId}</Text>
+                  </View>
+                  
+                  <View style={styles.modalDetailRow}>
+                    <Text style={styles.modalDetailLabel}>Agent:</Text>
+                    <Text style={styles.modalDetailValue}>{selectedCall.agentName}</Text>
+                  </View>
+                  
+                  {/* <View style={styles.modalDetailRow}>
+                    <Text style={styles.modalDetailLabel}>Status:</Text>
+                    <Text style={[styles.modalDetailValue, { color: statusStyle.color }]}>
+                      {selectedCall.status.charAt(0).toUpperCase() + selectedCall.status.slice(1)}
+                    </Text>
+                  </View> */}
+                  
+                  <View style={styles.modalDetailRow}>
+                    <Text style={styles.modalDetailLabel}>Call Type:</Text>
+                    <Text style={styles.modalDetailValue}>{selectedCall.type}</Text>
+                  </View>
+                  
+                  <View style={styles.modalDetailRow}>
+                    <Text style={styles.modalDetailLabel}>Duration:</Text>
+                    <Text style={styles.modalDetailValue}>{selectedCall.duration}</Text>
+                  </View>
+                  
+                  {/* <View style={styles.modalDetailRow}>
+                    <Text style={styles.modalDetailLabel}>Phone:</Text>
+                    <Text style={styles.modalDetailValue}>{selectedCall.phone}</Text>
+                  </View> */}
+                </View>
+  
+                {/* Additional Information Section */}
+                <View style={styles.modalSection}>
+                  <Text style={styles.modalSectionTitle}>Additional Information</Text>
+                  
+                  <View style={styles.modalDetailRow}>
+                    <Text style={styles.modalDetailLabel}>Call Time:</Text>
+                    <Text style={styles.modalDetailValue}>{selectedCall.time}</Text>
+                  </View>
+                  
+                  {/* You can add more details here if needed */}
+                </View>
+  
+                {/* Action Buttons */}
+                <View style={styles.modalActions}>
+                  <TouchableOpacity
+                    style={styles.modalCallBtn}
+                    onPress={() => {
+                      closeModal();
+                      handlePhoneCall(selectedCall.phone);
+                    }}
+                  >
+                    <FontAwesome5 name="phone-alt" size={16} color="#fff" />
+                    <Text style={styles.modalCallBtnText}>Call Now</Text>
+                  </TouchableOpacity>
+  
+                  <TouchableOpacity
+                    style={styles.modalSecondaryBtn}
+                    onPress={closeModal}
+                  >
+                    <FontAwesome5 name="times" size={16} color="#6b7280" />
+                    <Text style={styles.modalSecondaryBtnText}>Close</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </BlurView>
+        </View>
+      </Modal>
+    );
   };
 
   const FilterTab: React.FC<{
@@ -2738,15 +3593,15 @@ const CallHistory: React.FC = () => {
           filteredHistory.length === 0 && styles.flatListEmptyContainer,
         ]}
         showsVerticalScrollIndicator={false}
-        // Removed problematic performance optimizations
         removeClippedSubviews={true}
         initialNumToRender={10}
         maxToRenderPerBatch={5}
         windowSize={10}
         updateCellsBatchingPeriod={50}
-        // Removed getItemLayout since item heights vary
-        // getItemLayout is only recommended when you have fixed height items
       />
+
+      {/* Call Details Modal */}
+      <CallDetailsModal />
     </ThemedView>
   );
 };
@@ -3047,5 +3902,212 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 16,
     color: "rgba(255, 255, 255, 0.8)",
+  },
+
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  modalBlur: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  modalBackdrop: {
+    flex: 1,
+  },
+  modalContainer: {
+    backgroundColor: "white",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: "85%",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 25,
+  },
+  modalHeader: {
+    padding: 24,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f3f4f6",
+  },
+  modalHeaderContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  modalCallerAvatar: {
+    width: 60,
+    height: 60,
+    backgroundColor: "#4ade80",
+    borderRadius: 30,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 16,
+  },
+  modalCallerInitials: {
+    color: "white",
+    fontWeight: "700",
+    fontSize: 20,
+  },
+  modalHeaderInfo: {
+    flex: 1,
+  },
+  modalCallerName: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#1f2937",
+    marginBottom: 4,
+  },
+  modalCallerPhone: {
+    fontSize: 16,
+    color: "#6b7280",
+    fontWeight: "500",
+  },
+  modalCloseBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#f3f4f6",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalStatusContainer: {
+    alignItems: "center",
+  },
+  modalStatusBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 8,
+  },
+  modalStatusText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  modalContent: {
+    // flex: 1,
+    padding: 24,
+  },
+  modalInfoGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+    marginBottom: 32,
+  },
+  modalInfoCard: {
+    width: "48%",
+    backgroundColor: "#f8fafc",
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+  },
+  modalInfoIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "white",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  modalInfoLabel: {
+    fontSize: 12,
+    color: "#64748b",
+    fontWeight: "500",
+    marginBottom: 4,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  modalInfoValue: {
+    fontSize: 16,
+    color: "#1e293b",
+    fontWeight: "600",
+  },
+  modalActions: {
+    flexDirection: "row",
+    gap: 12,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: "#f1f5f9",
+  },
+  modalCallBtn: {
+    flex: 1,
+    backgroundColor: "#4ade80",
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    shadowColor: "#22c55e",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  modalCallBtnText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  modalSecondaryBtn: {
+    flex: 1,
+    backgroundColor: "#f1f5f9",
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+  },
+  modalSecondaryBtnText: {
+    color: "#64748b",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  modalSection: {
+    marginBottom: 24,
+  },
+  modalSectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: 16,
+    paddingBottom: 8,
+    // borderBottomWidth: 1,
+    // borderBottomColor: '#f3f4f6',
+  },
+  modalDetailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  modalDetailLabel: {
+    fontSize: 14,
+    color: '#6b7280',
+    fontWeight: '500',
+  },
+  modalDetailValue: {
+    fontSize: 14,
+    color: '#1f2937',
+    fontWeight: '600',
+    textAlign: 'right',
+    flexShrink: 1,
+    marginLeft: 16,
   },
 });
