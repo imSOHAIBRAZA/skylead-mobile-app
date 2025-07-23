@@ -2830,6 +2830,935 @@
 
 
 
+// import React, { useState, useEffect, useRef } from 'react';
+// import {
+//   View,
+//   Text,
+//   StyleSheet,
+//   TouchableOpacity,
+//   Animated,
+//   Dimensions,
+//   Linking,
+//   Alert,
+//   FlatList,
+//   ActivityIndicator,
+// } from 'react-native';
+// import { BlurView } from 'expo-blur';
+// import { ThemedView } from '@/components/ThemedView';
+// import Header from '@/components/header';
+// import { FontAwesome5 } from '@expo/vector-icons';
+// import Pusher from 'pusher-js/react-native';
+// import AsyncStorage from '@react-native-async-storage/async-storage';
+// import { useAuth } from "@/context/AuthContext";
+// import TextAvatar from "react-native-text-avatar";
+// import { usePost } from "@/hooks/useApi";
+// import SuccessModal from '@/components/ui/SuccessModal';
+
+// const { width } = Dimensions.get('window');
+
+// interface CallRequest {
+//   id: string;
+//   name: string;
+//   phone: string;
+//   initials: string;
+//   type: string;
+//   purpose: string;
+//   timeAgo: string;
+//   status: 'pending' | 'accepted' | 'rejected';
+//   timestamp: number;
+//   leadId?: string; // Store original lead_id for API calls
+// }
+
+// interface CallStats {
+//   pendingCalls: number;
+//   totalCalls: number;
+//   acceptedCalls: number;
+//   rejectedCalls: number;
+// }
+
+// const CallDashboard: React.FC = () => {
+//   const { user } = useAuth();
+//   const [connectionStatus, setConnectionStatus] = useState('disconnected');
+//   const [subscriptionStatus, setSubscriptionStatus] = useState('not_subscribed');
+//   const pusherRef = useRef<any>(null);
+//   const [showSuccessModal, setShowSuccessModal] = useState(false);
+// const [successModalData, setSuccessModalData] = useState<{
+//   type: 'accepted' | 'declined';
+//   callerName: string;
+//   message?: string;
+// }>({
+//   type: 'accepted',
+//   callerName: '',
+// });
+  
+//   // API hook for call notifications
+//   const { post, loading: apiLoading, error: apiError } = usePost();
+  
+//   // Track which call is being processed
+//   const [processingCallId, setProcessingCallId] = useState<string | null>(null);
+  
+//   // Main state for all call requests
+//   const [allCallRequests, setAllCallRequests] = useState<CallRequest[]>([]);
+  
+//   // Computed stats from the main state
+//   const callStats: CallStats = React.useMemo(() => {
+//     const pending = allCallRequests.filter(call => call.status === 'pending').length;
+//     const accepted = allCallRequests.filter(call => call.status === 'accepted').length;
+//     const rejected = allCallRequests.filter(call => call.status === 'rejected').length;
+//     const total = accepted + rejected;
+    
+//     return {
+//       pendingCalls: pending,
+//       totalCalls: total,
+//       acceptedCalls: accepted,
+//       rejectedCalls: rejected,
+//     };
+//   }, [allCallRequests]);
+
+//   // Only show pending calls in the list
+//   const pendingCalls = allCallRequests.filter(call => call.status === 'pending');
+//   console.log('Pending Calls:', pendingCalls);
+
+//   // Load persisted data on component mount
+//   useEffect(() => {
+//     loadPersistedData();
+//   }, []);
+
+//   // Save data whenever it changes
+//   useEffect(() => {
+//     saveDataToPersistence();
+//   }, [allCallRequests]);
+
+//   const loadPersistedData = async () => {
+//     try {
+//       const storedCalls = await AsyncStorage.getItem(`callRequests_${user?.id}`);
+//       if (storedCalls) {
+//         const parsedCalls = JSON.parse(storedCalls);
+//         setAllCallRequests(parsedCalls);
+//         addDebugLog(`📱 Loaded ${parsedCalls.length} persisted calls`, 'info');
+//       }
+//     } catch (error) {
+//       addDebugLog(`❌ Error loading persisted data: ${error.message}`, 'error');
+//     }
+//   };
+
+//   const saveDataToPersistence = async () => {
+//     try {
+//       if (user?.id && allCallRequests.length >= 0) {
+//         await AsyncStorage.setItem(
+//           `callRequests_${user.id}`, 
+//           JSON.stringify(allCallRequests)
+//         );
+//       }
+//     } catch (error) {
+//       addDebugLog(`❌ Error saving data: ${error.message}`, 'error');
+//     }
+//   };
+
+//   // Debug logging function
+//   const addDebugLog = (message: string, type = 'info') => {
+//     const timestamp = new Date().toLocaleTimeString();
+//     console.log(`[${timestamp}] ${message}`);
+//   };
+
+//   // API call function for accepting/declining calls
+//   const sendCallNotificationStatus = async (leadId: string, status: number) => {
+//     try {
+//       const payload = {
+//         lead_id: parseInt(leadId), // Ensure it's a number
+//         status: status // 1 for accept, 0 for decline
+//       };
+      
+//       addDebugLog(`🚀 Sending API call: ${JSON.stringify(payload)}`, 'info');
+      
+//       const response = await post('/accept-call-notification', payload);
+      
+//       addDebugLog(`✅ API response: ${JSON.stringify(response)}`, 'success');
+//       return response;
+      
+//     } catch (error) {
+//       addDebugLog(`❌ API error: ${error.message}`, 'error');
+//       throw error;
+//     }
+//   };
+
+//   const connectToPusher = async () => {
+//     try {
+//       addDebugLog('🔄 Starting Pusher connection...', 'info');
+      
+//       const token = await AsyncStorage.getItem('userToken');
+//       const userId = user?.id;
+
+//       if (!token || !userId) {
+//         addDebugLog('❌ Missing token or user ID', 'error');
+//         setConnectionStatus('error');
+//         return;
+//       }
+
+//       addDebugLog(`👤 User ID: ${userId}`, 'info');
+
+//       // Disconnect existing connection if any
+//       if (pusherRef.current) {
+//         pusherRef.current.disconnect();
+//       }
+
+//       const pusher = new Pusher('b71a5e925d7e4b40fad3', {
+//         cluster: 'ap2',
+//         authEndpoint: 'https://backend.skyleadcrm.io/broadcasting/auth',
+//         auth: {
+//           headers: {
+//             Authorization: `Bearer ${token}`,
+//             Accept: 'application/json',
+//             'Content-Type': 'application/x-www-form-urlencoded',
+//           },
+//         },
+//         enabledTransports: ['ws', 'wss'],
+//         disabledTransports: ['xhr_polling', 'xhr_streaming'],
+//       });
+
+//       pusherRef.current = pusher;
+
+//       // Connection event handlers
+//       pusher.connection.bind('connected', () => {
+//         addDebugLog('✅ Pusher connected successfully', 'success');
+//         setConnectionStatus('connected');
+//       });
+
+//       pusher.connection.bind('connecting', () => {
+//         addDebugLog('🔄 Pusher connecting...', 'info');
+//         setConnectionStatus('connecting');
+//       });
+
+//       pusher.connection.bind('disconnected', () => {
+//         addDebugLog('🔌 Pusher disconnected', 'warning');
+//         setConnectionStatus('disconnected');
+//       });
+
+//       pusher.connection.bind('error', (err: any) => {
+//         addDebugLog(`❌ Pusher connection error: ${JSON.stringify(err)}`, 'error');
+//         setConnectionStatus('error');
+//       });
+
+//       pusher.connection.bind('state_change', (states: any) => {
+//         addDebugLog(`🔄 State change: ${states.previous} → ${states.current}`, 'info');
+//       });
+
+//       // Subscribe to PRIVATE channel
+//       const channelName = `private-trigercall.${userId}`;
+//       addDebugLog(`📡 Subscribing to PRIVATE channel: ${channelName}`, 'info');
+      
+//       const channel = pusher.subscribe(channelName);
+
+//       channel.bind('pusher:subscription_succeeded', () => {
+//         addDebugLog(`✅ Successfully subscribed to PRIVATE channel: ${channelName}`, 'success');
+//         setSubscriptionStatus('subscribed');
+//       });
+
+//       channel.bind('pusher:subscription_error', (error: any) => {
+//         addDebugLog(`❌ Subscription error: ${JSON.stringify(error)}`, 'error');
+//         setSubscriptionStatus('error');
+//       });
+
+//       // Bind to custom event with duplicate prevention
+//       channel.bind('App\\Events\\CallNotification', (data: any) => {
+//         addDebugLog(`📞 Received call notification: ${JSON.stringify(data)}`, 'success');
+        
+//         // Validate required data before creating call request
+//         const leadData = data.data;
+//         const leadId = leadData.lead_id;
+//         const name = leadData.lead?.client_name || leadData.lead?.lead_name || leadData.name;
+//         const phone = leadData.phone;
+
+//         // Skip if essential data is missing
+//         if (!leadId || !name || !phone) {
+//           addDebugLog(`❌ Skipping call notification due to missing essential data:
+//             leadId: ${leadId}
+//             name: ${name}
+//             phone: ${phone}`, 'error');
+//           return;
+//         }
+
+//         // Additional validation - skip if values are placeholder/default values
+//         if (name === 'Unknown Caller' || phone === 'No phone number' || 
+//             name.trim() === '' || phone.trim() === '') {
+//           addDebugLog(`❌ Skipping call notification due to invalid data values:
+//             name: "${name}"
+//             phone: "${phone}"`, 'error');
+//           return;
+//         }
+        
+//         const uniqueId = `${leadId}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+        
+//         const newCallRequest: CallRequest = {
+//           id: uniqueId,
+//           name: name,
+//           phone: phone,
+//           initials: leadData.initials || name.split(' ').map((n: string) => n[0]).join('').substring(0, 2),
+//           type: leadData.type || 'Call',
+//           purpose: leadData.purpose || 'No purpose provided',
+//           timeAgo: leadData.lead?.last_assign_date || 'Just now',
+//           status: 'pending',
+//           timestamp: Date.now(),
+//           leadId: leadId.toString(), // Store original lead_id
+//         };
+
+//         setAllCallRequests(prev => {
+//           // Check if this lead_id already exists as pending
+//           const existingCallIndex = prev.findIndex(
+//             call => call.leadId === leadId.toString() && call.status === 'pending'
+//           );
+          
+//           if (existingCallIndex !== -1) {
+//             // Update existing call instead of creating duplicate
+//             const updatedCalls = [...prev];
+//             updatedCalls[existingCallIndex] = {
+//               ...updatedCalls[existingCallIndex],
+//               ...newCallRequest,
+//               id: updatedCalls[existingCallIndex].id, // Keep original unique ID
+//               timestamp: Date.now(), // Update timestamp
+//             };
+//             addDebugLog(`♻️ Updated existing pending call for lead ${leadId}`, 'info');
+//             return updatedCalls;
+//           } else {
+//             // Add new call
+//             addDebugLog(`➕ Added new call request with ID ${uniqueId} for ${name} (${phone})`, 'info');
+//             return [newCallRequest, ...prev];
+//           }
+//         });
+//       });
+
+//       return pusher;
+//     } catch (error: any) {
+//       addDebugLog(`💥 Error in connectToPusher: ${error.message}`, 'error');
+//       setConnectionStatus('error');
+//     }
+//   };
+
+//   useEffect(() => {
+//     connectToPusher();
+
+//     // Cleanup on unmount
+//     return () => {
+//       if (pusherRef.current) {
+//         addDebugLog('🧹 Cleaning up Pusher connection...', 'info');
+//         pusherRef.current.disconnect();
+//       }
+//     };
+//   }, [user?.id]);
+
+//   // Function to handle phone dialing
+//   const handlePhoneCall = async (phoneNumber: string) => {
+//     try {
+//       const cleanPhoneNumber = phoneNumber.replace(/[\s\(\)\-]/g, '');
+//       const phoneUrl = `tel:${cleanPhoneNumber}`;
+      
+//       const supported = await Linking.canOpenURL(phoneUrl);
+      
+//       if (supported) {
+//         await Linking.openURL(phoneUrl);
+//         return true;
+//       } else {
+//         Alert.alert(
+//           'Phone Not Available',
+//           'Phone dialing is not available on this device',
+//           [{ text: 'OK' }]
+//         );
+//         return false;
+//       }
+//     } catch (error) {
+//       console.error('Error opening phone dialer:', error);
+//       Alert.alert(
+//         'Error',
+//         'Failed to open phone dialer. Please try again.',
+//         [{ text: 'OK' }]
+//       );
+//       return false;
+//     }
+//   };
+
+//   const handleCallAction = async (id: string, action: 'accepted' | 'rejected') => {
+//     addDebugLog(`🎬 Handling call action: ${action} for call ${id}`, 'info');
+    
+//     // Set processing state
+//     setProcessingCallId(id);
+    
+//     try {
+//       // Find the call request to get the original lead_id
+//       const callRequest = allCallRequests.find(call => call.id === id);
+      
+//       if (!callRequest) {
+//         addDebugLog(`❌ Call request with ID ${id} not found`, 'error');
+//         Alert.alert('Error', 'Call request not found. Please try again.');
+//         return;
+//       }
+      
+//       const leadId = callRequest.leadId || id.split('_')[0];
+      
+//       // Prepare API status: 1 for accept, 0 for decline
+//       const apiStatus = action === 'accepted' ? 1 : 0;
+      
+//       // Call the API with the original lead_id
+//       await sendCallNotificationStatus(leadId, apiStatus);
+      
+//       // Show success modal instead of Alert
+//       setSuccessModalData({
+//         type: action === 'accepted' ? 'accepted' : 'declined',
+//         callerName: callRequest.name,
+//         message: action === 'accepted'
+//           ? 'Call has been connected successfully!'
+//           : 'Call has been declined and removed from queue.',
+//       });
+//       setShowSuccessModal(true);
+      
+//       // If action is accept, handle phone call with delay
+//       if (action === 'accepted') {
+//         addDebugLog(`⏳ Adding 2 second delay before opening phone call...`, 'info');
+        
+//         // Add delay before opening phone call (2000ms = 2 seconds)
+//         setTimeout(async () => {
+//           const dialSuccess = await handlePhoneCall(callRequest.phone);
+//           if (!dialSuccess) {
+//             addDebugLog(`⚠️ Phone dialing failed for ${id}, but API call succeeded`, 'warning');
+//           }
+//         }, 2000); // 2 second delay - adjust this value as needed
+//       }
+      
+//       // Update the call status and remove it from the list
+//       setAllCallRequests(prev => {
+//         const updatedCalls = prev.map(call => {
+//           if (call.id === id) {
+//             return { ...call, status: action, timeAgo: 'Just now' };
+//           }
+//           return call;
+//         });
+        
+//         // Filter out the processed call completely
+//         return updatedCalls.filter(call => call.id !== id);
+//       });
+      
+//       addDebugLog(`✅ Call ${id} processed as ${action} and removed from list`, 'success');
+      
+//     } catch (error) {
+//       addDebugLog(`❌ Failed to process call ${id}: ${error.message}`, 'error');
+      
+//       // Show error alert (keep this as Alert for errors)
+//       Alert.alert(
+//         'Error',
+//         `Failed to ${action === 'accepted' ? 'accept' : 'decline'} the call. Please try again.`,
+//         [{ text: 'OK' }]
+//       );
+//     } finally {
+//       // Clear processing state
+//       setProcessingCallId(null);
+//     }
+//   };
+  
+//   // Add this function to handle modal close
+//   const handleModalClose = () => {
+//     setShowSuccessModal(false);
+//   };
+
+//   // const handleCallAction = async (id: string, action: 'accepted' | 'rejected') => {
+//   //   addDebugLog(`🎬 Handling call action: ${action} for call ${id}`, 'info');
+    
+//   //   // Set processing state
+//   //   setProcessingCallId(id);
+    
+//   //   try {
+//   //     // Find the call request to get the original lead_id
+//   //     const callRequest = allCallRequests.find(call => call.id === id);
+      
+//   //     if (!callRequest) {
+//   //       addDebugLog(`❌ Call request with ID ${id} not found`, 'error');
+//   //       Alert.alert('Error', 'Call request not found. Please try again.');
+//   //       return;
+//   //     }
+
+//   //     const leadId = callRequest.leadId || id.split('_')[0]; // Fallback to extracting from ID
+      
+//   //     // Prepare API status: 1 for accept, 0 for decline
+//   //     const apiStatus = action === 'accepted' ? 1 : 0;
+      
+//   //     // Call the API with the original lead_id
+//   //     await sendCallNotificationStatus(leadId, apiStatus);
+      
+//   //     // If action is accept, handle phone call
+//   //     if (action === 'accepted') {
+//   //       const dialSuccess = await handlePhoneCall(callRequest.phone);
+//   //       if (!dialSuccess) {
+//   //         // If dialing failed, still mark as accepted since API call succeeded
+//   //         addDebugLog(`⚠️ Phone dialing failed for ${id}, but API call succeeded`, 'warning');
+//   //       }
+//   //     }
+
+//   //     // FIXED: Update the call status and immediately remove it from the list
+//   //     setAllCallRequests(prev => {
+//   //       const updatedCalls = prev.map(call => {
+//   //         if (call.id === id) {
+//   //           return { ...call, status: action, timeAgo: 'Just now' };
+//   //         }
+//   //         return call;
+//   //       });
+        
+//   //       // Filter out the processed call completely
+//   //       return updatedCalls.filter(call => call.id !== id);
+//   //     });
+
+//   //     addDebugLog(`✅ Call ${id} processed as ${action} and removed from list`, 'success');
+      
+//   //     // Show success message
+//   //     Alert.alert(
+//   //       'Success',
+//   //       `Call ${action === 'accepted' ? 'accepted' : 'declined'} successfully!`,
+//   //       [{ text: 'OK' }]
+//   //     );
+      
+//   //   } catch (error) {
+//   //     addDebugLog(`❌ Failed to process call ${id}: ${error.message}`, 'error');
+      
+//   //     // Show error alert
+//   //     Alert.alert(
+//   //       'Error',
+//   //       `Failed to ${action === 'accepted' ? 'accept' : 'decline'} the call. Please try again.`,
+//   //       [{ text: 'OK' }]
+//   //     );
+//   //   } finally {
+//   //     // Clear processing state
+//   //     setProcessingCallId(null);
+//   //   }
+//   // };
+
+//   // Function to clear old processed calls (optional utility)
+//   const clearProcessedCalls = () => {
+//     Alert.alert(
+//       'Clear History',
+//       'Are you sure you want to clear all accepted and rejected calls?',
+//       [
+//         { text: 'Cancel', style: 'cancel' },
+//         {
+//           text: 'Clear',
+//           style: 'destructive',
+//           onPress: () => {
+//             setAllCallRequests(prev => prev.filter(call => call.status === 'pending'));
+//             addDebugLog('🧹 Cleared processed calls', 'info');
+//           }
+//         }
+//       ]
+//     );
+//   };
+
+//   const CallRequestCard: React.FC<{ request: CallRequest }> = ({ request }) => {
+//     const slideAnim = useRef(new Animated.Value(0)).current;
+//     const isProcessing = processingCallId === request.id;
+
+//     useEffect(() => {
+//       Animated.timing(slideAnim, {
+//         toValue: 1,
+//         duration: 300,
+//         useNativeDriver: true,
+//       }).start();
+//     }, []);
+
+//     // Strict validation to ensure we have valid data - return null for invalid requests
+//     if (!request || 
+//         !request.id || 
+//         !request.name || 
+//         !request.phone || 
+//         request.name.trim() === '' || 
+//         request.phone.trim() === '' ||
+//         request.name === 'Unknown Caller' ||
+//         request.phone === 'No phone number') {
+//       addDebugLog(`⚠️ Skipping render of invalid call request: ${JSON.stringify(request)}`, 'warning');
+//       return null;
+//     }
+
+
+    
+//     return (
+//       <Animated.View
+//         style={[
+//           styles.callRequest,
+//           {
+//             opacity: slideAnim,
+//             transform: [
+//               {
+//                 translateY: slideAnim.interpolate({
+//                   inputRange: [0, 1],
+//                   outputRange: [20, 0],
+//                 }),
+//               },
+//             ],
+//           },
+//         ]}
+//       >
+//         <View style={styles.callHeader}>
+//           <TextAvatar
+//             backgroundColor="#4ade80"
+//             textColor="#fff"
+//             size={50}
+//             type="circle"
+//           >
+//             {request.name}
+//           </TextAvatar>
+          
+//           <View style={styles.callerInfo}>
+//             <Text style={styles.callerName}>{request.name}</Text>
+//             <Text style={styles.callerDetails}>{request.phone}</Text>
+//           </View>
+          
+//           <View style={styles.callTimeContainer}>
+//             <Text style={styles.callTime}>{request.timeAgo}</Text>
+//           </View>
+//         </View>
+
+//         {request.purpose && request.purpose !== 'No purpose provided' && (
+//           <View style={styles.callInfo}>
+//             <Text style={styles.callPurpose}>{request.purpose}</Text>
+//           </View>
+//         )}
+
+//         <View style={styles.callActions}>
+//           <TouchableOpacity
+//             style={[
+//               styles.btn, 
+//               styles.btnAccept,
+//               isProcessing && styles.btnDisabled
+//             ]}
+//             onPress={() => handleCallAction(request.id, 'accepted')}
+//             disabled={isProcessing}
+//           >
+//             {isProcessing ? (
+//               <ActivityIndicator size="small" color="#fff" />
+//             ) : (
+//               <FontAwesome5 name="phone-alt" size={14} color="#fff" />
+//             )}
+//             <Text style={styles.btnAcceptText}>
+//               {isProcessing ? 'Processing...' : 'Accept & Call'}
+//             </Text>
+//           </TouchableOpacity>
+          
+//           <TouchableOpacity
+//             style={[
+//               styles.btn, 
+//               styles.btnReject,
+//               isProcessing && styles.btnDisabled
+//             ]}
+//             onPress={() => handleCallAction(request.id, 'rejected')}
+//             disabled={isProcessing}
+//           >
+//             {isProcessing ? (
+//               <ActivityIndicator size="small" color="#fff" />
+//             ) : (
+//               <FontAwesome5 name="phone-slash" size={14} color="white" />
+//             )}
+//             <Text style={styles.btnRejectText}>
+//               {isProcessing ? 'Processing...' : 'Decline'}
+//             </Text>
+//           </TouchableOpacity>
+//         </View>
+//       </Animated.View>
+//     );
+//   };
+
+//   const EmptyState: React.FC = () => (
+//     <View style={styles.emptyState}>
+//       <FontAwesome5 name="phone-alt" size={28} color="white" />
+//       <Text style={styles.emptyTitle}>No Pending Calls</Text>
+//       <Text style={styles.emptySubtitle}>All caught up! New call requests will appear here.</Text>
+//     </View>
+//   );
+
+//   const renderCallRequest = ({ item }: { item: CallRequest }) => {
+//     // Add extra validation here too
+//     if (!item || !item.id || !item.name || !item.phone) {
+//       addDebugLog(`⚠️ Skipping invalid item in renderCallRequest: ${JSON.stringify(item)}`, 'warning');
+//       return null;
+//     }
+//     return <CallRequestCard request={item} />;
+//   };
+
+//   const renderListHeader = () => (
+//     <View>
+//       <Text style={styles.pageTitle}>Call Dashboard</Text>
+//       <Text style={styles.pageSubtitle}>Manage incoming call requests</Text>
+
+//       {/* Stats - Keep original design */}
+//       <View style={styles.statsGrid}>
+//         <View style={styles.statCard}>
+//           <Text style={styles.statNumber}>{callStats.pendingCalls}</Text>
+//           <Text style={styles.statLabel}>Pending Calls</Text>
+//         </View>
+        
+//         <View style={styles.statCard}>
+//           <Text style={styles.statNumber}>{callStats.totalCalls}</Text>
+//           <Text style={styles.statLabel}>Today's Calls</Text>
+//         </View>
+//       </View>
+
+//        {/* Connection Status Indicator */}
+//        <View style={styles.statusContainer}>
+//         <View style={[
+//           styles.statusIndicator, 
+//           { backgroundColor: connectionStatus === 'connected' ? '#4ade80' : '#ef4444' }
+//         ]} />
+//         <Text style={styles.statusText}>
+//           {connectionStatus === 'connected' ? 'Connected' : 'Disconnected'}
+//         </Text>
+        
+//         {callStats.totalCalls > 0 && (
+//           <TouchableOpacity onPress={clearProcessedCalls} style={styles.clearButton}>
+//             <Text style={styles.clearButtonText}>Clear History</Text>
+//           </TouchableOpacity>
+//         )}
+//       </View>
+
+//       {/* Show API error if any */}
+//       {apiError && (
+//         <View style={styles.errorContainer}>
+//           <Text style={styles.errorText}>API Error: {apiError.message}</Text>
+//         </View>
+//       )}
+
+//       <Text style={styles.sectionTitle}>Incoming Requests</Text>
+//     </View>
+//   );
+
+//   return (
+//     <ThemedView style={styles.container}>
+//       <Header />
+
+//       <FlatList
+//         data={pendingCalls}
+//         renderItem={renderCallRequest}
+//         keyExtractor={(item, index) => item?.id || `fallback_${index}`}
+//         showsVerticalScrollIndicator={false}
+//         contentContainerStyle={styles.flatListContainer}
+//         ListHeaderComponent={renderListHeader}
+//         ListEmptyComponent={<EmptyState />}
+//         ItemSeparatorComponent={() => <View style={styles.itemSeparator} />}
+//         removeClippedSubviews={true}
+//         maxToRenderPerBatch={10}
+//         windowSize={10}
+//         initialNumToRender={10}
+//         extraData={allCallRequests} // Force re-render when data changes
+//       />
+
+//  {/* Add the Success Modal here */}
+//  <SuccessModal
+//       visible={showSuccessModal}
+//       onClose={handleModalClose}
+//       type={successModalData.type}
+//       callerName={successModalData.callerName}
+//       message={successModalData.message}
+//     />
+
+//     </ThemedView>
+//   );
+// };
+
+// const styles = StyleSheet.create({
+//   container: {
+//     flex: 1,
+//     paddingTop: 50,
+//   },
+//   flatListContainer: {
+//     paddingHorizontal: 20,
+//     paddingBottom: 100,
+//   },
+//   itemSeparator: {
+//     height: 0,
+//   },
+//   pageTitle: {
+//     fontSize: 24,
+//     fontWeight: '600',
+//     color: 'white',
+//     marginBottom: 8,
+//   },
+//   pageSubtitle: {
+//     fontSize: 16,
+//     color: 'rgba(255, 255, 255, 0.7)',
+//     marginBottom: 30,
+//   },
+//   statsGrid: {
+//     flexDirection: 'row',
+//     gap: 15,
+//     marginBottom: 20,
+//   },
+//   statCard: {
+//     flex: 1,
+//     backgroundColor: 'rgba(255, 255, 255, 0.1)',
+//     borderRadius: 12,
+//     padding: 20,
+//     alignItems: 'center',
+//     borderWidth: 1,
+//     borderColor: 'rgba(255, 255, 255, 0.1)',
+//   },
+//   statNumber: {
+//     fontSize: 24,
+//     fontWeight: '700',
+//     color: '#4ade80',
+//     marginBottom: 4,
+//   },
+//   statLabel: {
+//     fontSize: 12,
+//     color: 'rgba(255, 255, 255, 0.7)',
+//   },
+//   statusContainer: {
+//     flexDirection: 'row',
+//     alignItems: 'center',
+//     marginBottom: 20,
+//     gap: 8,
+//   },
+//   statusIndicator: {
+//     width: 8,
+//     height: 8,
+//     borderRadius: 4,
+//   },
+//   statusText: {
+//     fontSize: 12,
+//     color: 'rgba(255, 255, 255, 0.7)',
+//     flex: 1,
+//   },
+//   errorContainer: {
+//     backgroundColor: 'rgba(239, 68, 68, 0.2)',
+//     padding: 12,
+//     borderRadius: 8,
+//     marginBottom: 20,
+//     borderWidth: 1,
+//     borderColor: 'rgba(239, 68, 68, 0.3)',
+//   },
+//   errorText: {
+//     color: '#ef4444',
+//     fontSize: 12,
+//     fontWeight: '500',
+//   },
+//   clearButton: {
+//     backgroundColor: 'rgba(239, 68, 68, 0.2)',
+//     paddingHorizontal: 12,
+//     paddingVertical: 6,
+//     borderRadius: 8,
+//     borderWidth: 1,
+//     borderColor: 'rgba(239, 68, 68, 0.3)',
+//   },
+//   clearButtonText: {
+//     color: '#ef4444',
+//     fontSize: 12,
+//     fontWeight: '500',
+//   },
+//   sectionTitle: {
+//     fontSize: 18,
+//     fontWeight: '600',
+//     color: 'white',
+//     marginBottom: 20,
+//   },
+//   callRequest: {
+//     backgroundColor: 'white',
+//     borderRadius: 16,
+//     padding: 20,
+//     marginBottom: 16,
+//     shadowColor: '#000',
+//     shadowOffset: { width: 0, height: 4 },
+//     shadowOpacity: 0.1,
+//     shadowRadius: 20,
+//     elevation: 5,
+//   },
+//   callHeader: {
+//     flexDirection: 'row',
+//     alignItems: 'center',
+//     gap: 15,
+//     marginBottom: 15,
+//   },
+//   callerInfo: {
+//     flex: 1,
+//   },
+//   callerName: {
+//     fontSize: 16,
+//     fontWeight: '600',
+//     color: '#1f2937',
+//     marginBottom: 2,
+//   },
+//   callerDetails: {
+//     fontSize: 14,
+//     color: '#6b7280',
+//   },
+//   callTimeContainer: {
+//     backgroundColor: '#f3f4f6',
+//     paddingHorizontal: 8,
+//     paddingVertical: 4,
+//     borderRadius: 6,
+//   },
+//   callTime: {
+//     fontSize: 12,
+//     color: '#9ca3af',
+//   },
+//   callInfo: {
+//     marginBottom: 20,
+//   },
+//   callPurpose: {
+//     fontSize: 14,
+//     color: '#4b5563',
+//     lineHeight: 20,
+//   },
+//   callActions: {
+//     flexDirection: 'row',
+//     gap: 12,
+//   },
+//   btn: {
+//     flex: 1,
+//     paddingVertical: 12,
+//     borderRadius: 12,
+//     alignItems: 'center',
+//     flexDirection: 'row',
+//     justifyContent: 'center',
+//   },
+//   btnAccept: {
+//     backgroundColor: '#4ade80',
+//   },
+//   btnAcceptText: {
+//     color: 'white',
+//     fontSize: 14,
+//     fontWeight: '600',
+//     marginLeft: 8,
+//   },
+//   btnReject: {
+//     backgroundColor: '#ef4444',
+//     borderWidth: 1,
+//     borderColor: '#ef4444',
+//   },
+//   btnRejectText: {
+//     color: 'white',
+//     fontSize: 14,
+//     fontWeight: '600',
+//     marginLeft: 8,
+//   },
+//   btnDisabled: {
+//     opacity: 0.7,
+//   },
+//   emptyState: {
+//     alignItems: 'center',
+//     padding: 40,
+//   },
+//   emptyTitle: {
+//     fontSize: 18,
+//     fontWeight: '600',
+//     marginBottom: 8,
+//     marginTop: 10,
+//     color: 'rgba(255, 255, 255, 0.8)',
+//   },
+//   emptySubtitle: {
+//     fontSize: 14,
+//     color: 'rgba(255, 255, 255, 0.6)',
+//     textAlign: 'center',
+//     lineHeight: 20,
+//   },
+// });
+
+// export default CallDashboard;
+
+
+
+
+
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -2842,6 +3771,7 @@ import {
   Alert,
   FlatList,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { ThemedView } from '@/components/ThemedView';
@@ -2853,6 +3783,11 @@ import { useAuth } from "@/context/AuthContext";
 import TextAvatar from "react-native-text-avatar";
 import { usePost } from "@/hooks/useApi";
 import SuccessModal from '@/components/ui/SuccessModal';
+
+// Expo Notifications imports
+import * as Notifications from 'expo-notifications';
+import * as Device from 'expo-device';
+import Constants from 'expo-constants';
 
 const { width } = Dimensions.get('window');
 
@@ -2866,7 +3801,7 @@ interface CallRequest {
   timeAgo: string;
   status: 'pending' | 'accepted' | 'rejected';
   timestamp: number;
-  leadId?: string; // Store original lead_id for API calls
+  leadId?: string;
 }
 
 interface CallStats {
@@ -2876,31 +3811,42 @@ interface CallStats {
   rejectedCalls: number;
 }
 
+// Configure notification handler for foreground notifications
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
+
 const CallDashboard: React.FC = () => {
   const { user } = useAuth();
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
   const [subscriptionStatus, setSubscriptionStatus] = useState('not_subscribed');
   const pusherRef = useRef<any>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-const [successModalData, setSuccessModalData] = useState<{
-  type: 'accepted' | 'declined';
-  callerName: string;
-  message?: string;
-}>({
-  type: 'accepted',
-  callerName: '',
-});
+  const [successModalData, setSuccessModalData] = useState<{
+    type: 'accepted' | 'declined';
+    callerName: string;
+    message?: string;
+  }>({
+    type: 'accepted',
+    callerName: '',
+  });
+
+  // Push notification states
+  const [expoPushToken, setExpoPushToken] = useState<string>('');
+  const [notification, setNotification] = useState(undefined);
+  // const notificationListener = useRef();
+  // const responseListener = useRef();
   
-  // API hook for call notifications
   const { post, loading: apiLoading, error: apiError } = usePost();
-  
-  // Track which call is being processed
   const [processingCallId, setProcessingCallId] = useState<string | null>(null);
-  
-  // Main state for all call requests
   const [allCallRequests, setAllCallRequests] = useState<CallRequest[]>([]);
   
-  // Computed stats from the main state
   const callStats: CallStats = React.useMemo(() => {
     const pending = allCallRequests.filter(call => call.status === 'pending').length;
     const accepted = allCallRequests.filter(call => call.status === 'accepted').length;
@@ -2915,10 +3861,214 @@ const [successModalData, setSuccessModalData] = useState<{
     };
   }, [allCallRequests]);
 
-  // Only show pending calls in the list
   const pendingCalls = allCallRequests.filter(call => call.status === 'pending');
-  console.log('Pending Calls:', pendingCalls);
 
+  // Push Notification Functions
+  async function registerForPushNotificationsAsync() {
+    let token;
+
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelAsync('call-requests', {
+        name: 'Call Requests',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#4ade80',
+        sound: 'default',
+      });
+    }
+
+    if (Device.isDevice) {
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+      
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+      
+      if (finalStatus !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'Push notifications are needed to receive call requests when the app is in background.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+      
+      try {
+        const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
+        if (!projectId) {
+          throw new Error('Project ID not found');
+        }
+        
+        token = (await Notifications.getExpoPushTokenAsync({
+          projectId,
+        })).data;
+        
+        addDebugLog(`📱 Expo Push Token: ${token}`, 'success');
+        console.log( `📱 Expo Push Token:+++++>>`,token)
+        
+        // Store token in AsyncStorage and send to backend
+        await AsyncStorage.setItem('expoPushToken', token);
+        // await sendPushTokenToBackend(token);
+        
+      } catch (e) {
+        addDebugLog(`❌ Error getting push token: ${e}`, 'error');
+        token = `${e}`;
+      }
+    } else {
+      Alert.alert('Must use physical device for Push Notifications');
+    }
+
+    return token;
+  }
+
+  // Send push token to your backend
+  async function sendPushTokenToBackend(token: string) {
+    try {
+      await post('/user/push-token', {
+        push_token: token,
+        platform: Platform.OS,
+      });
+      addDebugLog('✅ Push token sent to backend successfully', 'success');
+    } catch (error) {
+      addDebugLog(`❌ Failed to send push token to backend: ${error.message}`, 'error');
+    }
+  }
+
+  // Handle notification received while app is foregrounded
+  function handleNotificationReceived(notification: Notifications.Notification) {
+    addDebugLog(`🔔 Foreground notification received: ${JSON.stringify(notification.request.content)}`, 'info');
+    setNotification(notification);
+    
+    // Extract call data from notification
+    const callData = notification.request.content.data;
+    if (callData && callData.type === 'call_request') {
+      handleIncomingCallFromNotification(callData);
+    }
+  }
+
+  // Handle notification response (when user taps notification)
+  function handleNotificationResponse(response: Notifications.NotificationResponse) {
+    addDebugLog(`👆 Notification tapped: ${JSON.stringify(response.notification.request.content)}`, 'info');
+    
+    const callData = response.notification.request.content.data;
+    if (callData && callData.type === 'call_request') {
+      // Navigate to call dashboard or handle the call
+      handleIncomingCallFromNotification(callData);
+    }
+  }
+
+  // Handle incoming call data from push notification
+  function handleIncomingCallFromNotification(callData: any) {
+    if (!callData.leadId || !callData.name || !callData.phone) {
+      addDebugLog(`❌ Invalid call data from notification: ${JSON.stringify(callData)}`, 'error');
+      return;
+    }
+
+    const uniqueId = `${callData.leadId}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+    
+    const newCallRequest: CallRequest = {
+      id: uniqueId,
+      name: callData.name,
+      phone: callData.phone,
+      initials: callData.initials || callData.name.split(' ').map((n: string) => n[0]).join('').substring(0, 2),
+      type: callData.type || 'Call',
+      purpose: callData.purpose || 'No purpose provided',
+      timeAgo: 'Just now',
+      status: 'pending',
+      timestamp: Date.now(),
+      leadId: callData.leadId.toString(),
+    };
+
+    setAllCallRequests(prev => {
+      const existingCallIndex = prev.findIndex(
+        call => call.leadId === callData.leadId.toString() && call.status === 'pending'
+      );
+      
+      if (existingCallIndex !== -1) {
+        const updatedCalls = [...prev];
+        updatedCalls[existingCallIndex] = {
+          ...updatedCalls[existingCallIndex],
+          ...newCallRequest,
+          id: updatedCalls[existingCallIndex].id,
+          timestamp: Date.now(),
+        };
+        addDebugLog(`♻️ Updated existing pending call for lead ${callData.leadId} from notification`, 'info');
+        return updatedCalls;
+      } else {
+        addDebugLog(`➕ Added new call request from notification: ${callData.name} (${callData.phone})`, 'info');
+        return [newCallRequest, ...prev];
+      }
+    });
+  }
+
+  // Schedule a local notification (for testing or immediate notifications)
+  async function scheduleCallNotification(callData: CallRequest) {
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: '📞 Incoming Call Request',
+        body: `${callData.name} wants to connect with you`,
+        data: {
+          type: 'call_request',
+          leadId: callData.leadId,
+          name: callData.name,
+          phone: callData.phone,
+          purpose: callData.purpose,
+        },
+        sound: 'default',
+        priority: Notifications.AndroidNotificationPriority.MAX,
+        sticky: false,
+        autoDismiss: false,
+      },
+      trigger: null, // Show immediately
+    });
+  }
+
+  
+  // Initialize notifications
+  // useEffect(() => {
+  //   registerForPushNotificationsAsync().then(token => token && setExpoPushToken(token));
+
+  //   // Listen for notifications received while app is foregrounded
+  //   notificationListener.current = Notifications.addNotificationReceivedListener(handleNotificationReceived);
+
+  //   // Listen for user interaction with notifications
+  //   responseListener.current = Notifications.addNotificationResponseReceivedListener(handleNotificationResponse);
+
+  //   return () => {
+  //     notificationListener.current &&
+  //       Notifications.removeNotificationSubscription(notificationListener.current);
+  //     responseListener.current &&
+  //       Notifications.removeNotificationSubscription(responseListener.current);
+  //   };
+  // }, []);
+
+
+  useEffect(() => {
+    registerForPushNotificationsAsync()
+      .then(token => setExpoPushToken(token ?? ''))
+      .catch((error: any) => setExpoPushToken(`${error}`));
+      
+      // | Listener                                  | Purpose                                           | Example Use                     |
+      // | ----------------------------------------- | ------------------------------------------------- | ------------------------------- |
+      // | `addNotificationReceivedListener`         | Update app UI when a push comes in                | Show a toast, badge, or message |
+      // | `addNotificationResponseReceivedListener` | Handle what happens when a notification is tapped | Navigate to a specific screen   |
+      
+      // 🔔 Fired when the app receives a notification while it's in the foreground (open and visible)
+    const notificationListener = Notifications.addNotificationReceivedListener(handleNotificationReceived);
+
+    // Fired when the user interacts with a notification (e.g., taps it) In the background Or killed, and opened via the notification.
+    const responseListener = Notifications.addNotificationResponseReceivedListener(handleNotificationResponse);
+
+    return () => {
+      notificationListener.remove();
+      responseListener.remove();
+    };
+  }, []);
+
+
+  
   // Load persisted data on component mount
   useEffect(() => {
     loadPersistedData();
@@ -2955,24 +4105,20 @@ const [successModalData, setSuccessModalData] = useState<{
     }
   };
 
-  // Debug logging function
   const addDebugLog = (message: string, type = 'info') => {
     const timestamp = new Date().toLocaleTimeString();
     console.log(`[${timestamp}] ${message}`);
   };
 
-  // API call function for accepting/declining calls
   const sendCallNotificationStatus = async (leadId: string, status: number) => {
     try {
       const payload = {
-        lead_id: parseInt(leadId), // Ensure it's a number
-        status: status // 1 for accept, 0 for decline
+        lead_id: parseInt(leadId),
+        status: status
       };
       
       addDebugLog(`🚀 Sending API call: ${JSON.stringify(payload)}`, 'info');
-      
       const response = await post('/accept-call-notification', payload);
-      
       addDebugLog(`✅ API response: ${JSON.stringify(response)}`, 'success');
       return response;
       
@@ -2997,7 +4143,6 @@ const [successModalData, setSuccessModalData] = useState<{
 
       addDebugLog(`👤 User ID: ${userId}`, 'info');
 
-      // Disconnect existing connection if any
       if (pusherRef.current) {
         pusherRef.current.disconnect();
       }
@@ -3018,7 +4163,6 @@ const [successModalData, setSuccessModalData] = useState<{
 
       pusherRef.current = pusher;
 
-      // Connection event handlers
       pusher.connection.bind('connected', () => {
         addDebugLog('✅ Pusher connected successfully', 'success');
         setConnectionStatus('connected');
@@ -3043,7 +4187,6 @@ const [successModalData, setSuccessModalData] = useState<{
         addDebugLog(`🔄 State change: ${states.previous} → ${states.current}`, 'info');
       });
 
-      // Subscribe to PRIVATE channel
       const channelName = `private-trigercall.${userId}`;
       addDebugLog(`📡 Subscribing to PRIVATE channel: ${channelName}`, 'info');
       
@@ -3059,31 +4202,22 @@ const [successModalData, setSuccessModalData] = useState<{
         setSubscriptionStatus('error');
       });
 
-      // Bind to custom event with duplicate prevention
       channel.bind('App\\Events\\CallNotification', (data: any) => {
         addDebugLog(`📞 Received call notification: ${JSON.stringify(data)}`, 'success');
         
-        // Validate required data before creating call request
         const leadData = data.data;
         const leadId = leadData.lead_id;
         const name = leadData.lead?.client_name || leadData.lead?.lead_name || leadData.name;
         const phone = leadData.phone;
 
-        // Skip if essential data is missing
         if (!leadId || !name || !phone) {
-          addDebugLog(`❌ Skipping call notification due to missing essential data:
-            leadId: ${leadId}
-            name: ${name}
-            phone: ${phone}`, 'error');
+          addDebugLog(`❌ Skipping call notification due to missing essential data`, 'error');
           return;
         }
 
-        // Additional validation - skip if values are placeholder/default values
         if (name === 'Unknown Caller' || phone === 'No phone number' || 
             name.trim() === '' || phone.trim() === '') {
-          addDebugLog(`❌ Skipping call notification due to invalid data values:
-            name: "${name}"
-            phone: "${phone}"`, 'error');
+          addDebugLog(`❌ Skipping call notification due to invalid data values`, 'error');
           return;
         }
         
@@ -3099,28 +4233,28 @@ const [successModalData, setSuccessModalData] = useState<{
           timeAgo: leadData.lead?.last_assign_date || 'Just now',
           status: 'pending',
           timestamp: Date.now(),
-          leadId: leadId.toString(), // Store original lead_id
+          leadId: leadId.toString(),
         };
 
+        // Send push notification when app is in foreground
+        scheduleCallNotification(newCallRequest);
+
         setAllCallRequests(prev => {
-          // Check if this lead_id already exists as pending
           const existingCallIndex = prev.findIndex(
             call => call.leadId === leadId.toString() && call.status === 'pending'
           );
           
           if (existingCallIndex !== -1) {
-            // Update existing call instead of creating duplicate
             const updatedCalls = [...prev];
             updatedCalls[existingCallIndex] = {
               ...updatedCalls[existingCallIndex],
               ...newCallRequest,
-              id: updatedCalls[existingCallIndex].id, // Keep original unique ID
-              timestamp: Date.now(), // Update timestamp
+              id: updatedCalls[existingCallIndex].id,
+              timestamp: Date.now(),
             };
             addDebugLog(`♻️ Updated existing pending call for lead ${leadId}`, 'info');
             return updatedCalls;
           } else {
-            // Add new call
             addDebugLog(`➕ Added new call request with ID ${uniqueId} for ${name} (${phone})`, 'info');
             return [newCallRequest, ...prev];
           }
@@ -3137,7 +4271,6 @@ const [successModalData, setSuccessModalData] = useState<{
   useEffect(() => {
     connectToPusher();
 
-    // Cleanup on unmount
     return () => {
       if (pusherRef.current) {
         addDebugLog('🧹 Cleaning up Pusher connection...', 'info');
@@ -3146,7 +4279,6 @@ const [successModalData, setSuccessModalData] = useState<{
     };
   }, [user?.id]);
 
-  // Function to handle phone dialing
   const handlePhoneCall = async (phoneNumber: string) => {
     try {
       const cleanPhoneNumber = phoneNumber.replace(/[\s\(\)\-]/g, '');
@@ -3179,11 +4311,9 @@ const [successModalData, setSuccessModalData] = useState<{
   const handleCallAction = async (id: string, action: 'accepted' | 'rejected') => {
     addDebugLog(`🎬 Handling call action: ${action} for call ${id}`, 'info');
     
-    // Set processing state
     setProcessingCallId(id);
     
     try {
-      // Find the call request to get the original lead_id
       const callRequest = allCallRequests.find(call => call.id === id);
       
       if (!callRequest) {
@@ -3193,14 +4323,10 @@ const [successModalData, setSuccessModalData] = useState<{
       }
       
       const leadId = callRequest.leadId || id.split('_')[0];
-      
-      // Prepare API status: 1 for accept, 0 for decline
       const apiStatus = action === 'accepted' ? 1 : 0;
       
-      // Call the API with the original lead_id
       await sendCallNotificationStatus(leadId, apiStatus);
       
-      // Show success modal instead of Alert
       setSuccessModalData({
         type: action === 'accepted' ? 'accepted' : 'declined',
         callerName: callRequest.name,
@@ -3210,20 +4336,17 @@ const [successModalData, setSuccessModalData] = useState<{
       });
       setShowSuccessModal(true);
       
-      // If action is accept, handle phone call with delay
       if (action === 'accepted') {
         addDebugLog(`⏳ Adding 2 second delay before opening phone call...`, 'info');
         
-        // Add delay before opening phone call (2000ms = 2 seconds)
         setTimeout(async () => {
           const dialSuccess = await handlePhoneCall(callRequest.phone);
           if (!dialSuccess) {
             addDebugLog(`⚠️ Phone dialing failed for ${id}, but API call succeeded`, 'warning');
           }
-        }, 2000); // 2 second delay - adjust this value as needed
+        }, 2000);
       }
       
-      // Update the call status and remove it from the list
       setAllCallRequests(prev => {
         const updatedCalls = prev.map(call => {
           if (call.id === id) {
@@ -3232,7 +4355,6 @@ const [successModalData, setSuccessModalData] = useState<{
           return call;
         });
         
-        // Filter out the processed call completely
         return updatedCalls.filter(call => call.id !== id);
       });
       
@@ -3241,94 +4363,20 @@ const [successModalData, setSuccessModalData] = useState<{
     } catch (error) {
       addDebugLog(`❌ Failed to process call ${id}: ${error.message}`, 'error');
       
-      // Show error alert (keep this as Alert for errors)
       Alert.alert(
         'Error',
         `Failed to ${action === 'accepted' ? 'accept' : 'decline'} the call. Please try again.`,
         [{ text: 'OK' }]
       );
     } finally {
-      // Clear processing state
       setProcessingCallId(null);
     }
   };
   
-  // Add this function to handle modal close
   const handleModalClose = () => {
     setShowSuccessModal(false);
   };
 
-  // const handleCallAction = async (id: string, action: 'accepted' | 'rejected') => {
-  //   addDebugLog(`🎬 Handling call action: ${action} for call ${id}`, 'info');
-    
-  //   // Set processing state
-  //   setProcessingCallId(id);
-    
-  //   try {
-  //     // Find the call request to get the original lead_id
-  //     const callRequest = allCallRequests.find(call => call.id === id);
-      
-  //     if (!callRequest) {
-  //       addDebugLog(`❌ Call request with ID ${id} not found`, 'error');
-  //       Alert.alert('Error', 'Call request not found. Please try again.');
-  //       return;
-  //     }
-
-  //     const leadId = callRequest.leadId || id.split('_')[0]; // Fallback to extracting from ID
-      
-  //     // Prepare API status: 1 for accept, 0 for decline
-  //     const apiStatus = action === 'accepted' ? 1 : 0;
-      
-  //     // Call the API with the original lead_id
-  //     await sendCallNotificationStatus(leadId, apiStatus);
-      
-  //     // If action is accept, handle phone call
-  //     if (action === 'accepted') {
-  //       const dialSuccess = await handlePhoneCall(callRequest.phone);
-  //       if (!dialSuccess) {
-  //         // If dialing failed, still mark as accepted since API call succeeded
-  //         addDebugLog(`⚠️ Phone dialing failed for ${id}, but API call succeeded`, 'warning');
-  //       }
-  //     }
-
-  //     // FIXED: Update the call status and immediately remove it from the list
-  //     setAllCallRequests(prev => {
-  //       const updatedCalls = prev.map(call => {
-  //         if (call.id === id) {
-  //           return { ...call, status: action, timeAgo: 'Just now' };
-  //         }
-  //         return call;
-  //       });
-        
-  //       // Filter out the processed call completely
-  //       return updatedCalls.filter(call => call.id !== id);
-  //     });
-
-  //     addDebugLog(`✅ Call ${id} processed as ${action} and removed from list`, 'success');
-      
-  //     // Show success message
-  //     Alert.alert(
-  //       'Success',
-  //       `Call ${action === 'accepted' ? 'accepted' : 'declined'} successfully!`,
-  //       [{ text: 'OK' }]
-  //     );
-      
-  //   } catch (error) {
-  //     addDebugLog(`❌ Failed to process call ${id}: ${error.message}`, 'error');
-      
-  //     // Show error alert
-  //     Alert.alert(
-  //       'Error',
-  //       `Failed to ${action === 'accepted' ? 'accept' : 'decline'} the call. Please try again.`,
-  //       [{ text: 'OK' }]
-  //     );
-  //   } finally {
-  //     // Clear processing state
-  //     setProcessingCallId(null);
-  //   }
-  // };
-
-  // Function to clear old processed calls (optional utility)
   const clearProcessedCalls = () => {
     Alert.alert(
       'Clear History',
@@ -3359,7 +4407,6 @@ const [successModalData, setSuccessModalData] = useState<{
       }).start();
     }, []);
 
-    // Strict validation to ensure we have valid data - return null for invalid requests
     if (!request || 
         !request.id || 
         !request.name || 
@@ -3371,8 +4418,6 @@ const [successModalData, setSuccessModalData] = useState<{
       addDebugLog(`⚠️ Skipping render of invalid call request: ${JSON.stringify(request)}`, 'warning');
       return null;
     }
-
-
     
     return (
       <Animated.View
@@ -3469,7 +4514,6 @@ const [successModalData, setSuccessModalData] = useState<{
   );
 
   const renderCallRequest = ({ item }: { item: CallRequest }) => {
-    // Add extra validation here too
     if (!item || !item.id || !item.name || !item.phone) {
       addDebugLog(`⚠️ Skipping invalid item in renderCallRequest: ${JSON.stringify(item)}`, 'warning');
       return null;
@@ -3482,7 +4526,6 @@ const [successModalData, setSuccessModalData] = useState<{
       <Text style={styles.pageTitle}>Call Dashboard</Text>
       <Text style={styles.pageSubtitle}>Manage incoming call requests</Text>
 
-      {/* Stats - Keep original design */}
       <View style={styles.statsGrid}>
         <View style={styles.statCard}>
           <Text style={styles.statNumber}>{callStats.pendingCalls}</Text>
@@ -3495,14 +4538,22 @@ const [successModalData, setSuccessModalData] = useState<{
         </View>
       </View>
 
-       {/* Connection Status Indicator */}
-       <View style={styles.statusContainer}>
+      <View style={styles.statusContainer}>
         <View style={[
           styles.statusIndicator, 
           { backgroundColor: connectionStatus === 'connected' ? '#4ade80' : '#ef4444' }
         ]} />
         <Text style={styles.statusText}>
           {connectionStatus === 'connected' ? 'Connected' : 'Disconnected'}
+        </Text>
+        
+        {/* Push notification status */}
+        <View style={[
+          styles.pushStatusIndicator, 
+          { backgroundColor: expoPushToken ? '#4ade80' : '#ef4444' }
+        ]} />
+        <Text style={styles.pushStatusText}>
+          {expoPushToken ? 'Push ON' : 'Push OFF'}
         </Text>
         
         {callStats.totalCalls > 0 && (
@@ -3512,7 +4563,6 @@ const [successModalData, setSuccessModalData] = useState<{
         )}
       </View>
 
-      {/* Show API error if any */}
       {apiError && (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>API Error: {apiError.message}</Text>
@@ -3540,18 +4590,16 @@ const [successModalData, setSuccessModalData] = useState<{
         maxToRenderPerBatch={10}
         windowSize={10}
         initialNumToRender={10}
-        extraData={allCallRequests} // Force re-render when data changes
+        extraData={allCallRequests}
       />
 
- {/* Add the Success Modal here */}
- <SuccessModal
-      visible={showSuccessModal}
-      onClose={handleModalClose}
-      type={successModalData.type}
-      callerName={successModalData.callerName}
-      message={successModalData.message}
-    />
-
+      <SuccessModal
+        visible={showSuccessModal}
+        onClose={handleModalClose}
+        type={successModalData.type}
+        callerName={successModalData.callerName}
+        message={successModalData.message}
+      />
     </ThemedView>
   );
 };
@@ -3579,7 +4627,7 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.7)',
     marginBottom: 30,
   },
-  statsGrid: {
+    statsGrid: {
     flexDirection: 'row',
     gap: 15,
     marginBottom: 20,
